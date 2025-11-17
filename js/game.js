@@ -101,29 +101,71 @@ class Game {
 
     init() {
         // 게임 초기화 로직
-        this.room = new Room(this.canvas.width, this.canvas.height);
         this.player = new Player(this.canvas.width / 2, this.canvas.height / 2);
         this.projectiles = [];
         this.enemies = [];
         this.items = [];
 
-        // 테스트용 적 생성 (벽 안쪽에 배치)
-        this.spawnEnemy(200, 150, 'basic');
-        this.spawnEnemy(600, 150, 'basic');
-        this.spawnEnemy(400, 120, 'fast');
-        this.spawnEnemy(150, 400, 'tank');
-
-        // 테스트용 아이템 생성
-        this.spawnItem(300, 200, 'health');
-        this.spawnItem(500, 200, 'damage');
-        this.spawnItem(400, 350, 'speed');
-        this.spawnItem(250, 450, 'firerate');
-        this.spawnItem(550, 450, 'heal');
+        // 시작 방 생성 (적 없음)
+        this.loadRoom(false);
 
         // 시간 초기화
         this.lastTime = performance.now();
 
         this.clear();
+    }
+
+    // 방 로드 (적 생성 여부 결정)
+    loadRoom(hasEnemies) {
+        // 새 방 생성
+        this.room = new Room(this.canvas.width, this.canvas.height, hasEnemies);
+
+        // 기존 엔티티 제거
+        this.projectiles = [];
+        this.enemies = [];
+        this.items = [];
+
+        // 적이 있는 방이면 적 생성
+        if (hasEnemies) {
+            this.spawnEnemy(200, 150, 'basic');
+            this.spawnEnemy(600, 150, 'basic');
+            this.spawnEnemy(400, 120, 'fast');
+            this.spawnEnemy(150, 400, 'tank');
+
+            // 아이템도 생성
+            this.spawnItem(300, 200, 'health');
+            this.spawnItem(500, 200, 'damage');
+        }
+    }
+
+    // 다음 방으로 이동
+    enterDoor(direction) {
+        // 플레이어 위치를 반대편 문 근처로 이동
+        const centerX = this.canvas.width / 2;
+        const centerY = this.canvas.height / 2;
+        const offset = 80;
+
+        switch(direction) {
+            case 'top':
+                this.player.x = centerX;
+                this.player.y = this.canvas.height - offset;
+                break;
+            case 'bottom':
+                this.player.x = centerX;
+                this.player.y = offset;
+                break;
+            case 'left':
+                this.player.x = this.canvas.width - offset;
+                this.player.y = centerY;
+                break;
+            case 'right':
+                this.player.x = offset;
+                this.player.y = centerY;
+                break;
+        }
+
+        // 새로운 방 로드 (적 있음)
+        this.loadRoom(true);
     }
 
     // 적 생성 헬퍼 함수
@@ -160,6 +202,12 @@ class Game {
             // 방 경계 제약
             if (this.room) {
                 this.room.constrainEntity(this.player);
+
+                // 문 충돌 체크
+                const doorDirection = this.room.checkDoorCollision(this.player);
+                if (doorDirection) {
+                    this.enterDoor(doorDirection);
+                }
             }
 
             // 방향키로 발사

@@ -1,12 +1,14 @@
 // 방 클래스
 class Room {
-    constructor(canvasWidth, canvasHeight) {
+    constructor(canvasWidth, canvasHeight, hasEnemies = false) {
         this.canvasWidth = canvasWidth;
         this.canvasHeight = canvasHeight;
+        this.hasEnemies = hasEnemies;
 
         // 타일 설정
         this.tileSize = 48;
         this.wallThickness = this.tileSize;
+        this.doorWidth = 80;
 
         // 방 경계
         this.bounds = {
@@ -16,44 +18,83 @@ class Room {
             bottom: canvasHeight - this.wallThickness
         };
 
-        // 벽 목록
+        // 문 생성 (4방향)
+        this.doors = this.createDoors();
+
+        // 벽 목록 (문 구멍 포함)
         this.walls = this.createWalls();
     }
 
-    // 벽 생성
+    // 4방향 문 생성
+    createDoors() {
+        return {
+            top: new Door('top', this.canvasWidth, this.canvasHeight),
+            bottom: new Door('bottom', this.canvasWidth, this.canvasHeight),
+            left: new Door('left', this.canvasWidth, this.canvasHeight),
+            right: new Door('right', this.canvasWidth, this.canvasHeight)
+        };
+    }
+
+    // 벽 생성 (문 구멍 포함)
     createWalls() {
         const walls = [];
+        const centerX = this.canvasWidth / 2;
+        const centerY = this.canvasHeight / 2;
 
-        // 상단 벽
+        // 상단 벽 (좌, 우 두 부분으로 나눔 - 중앙에 문)
         walls.push({
             x: 0,
             y: 0,
-            width: this.canvasWidth,
+            width: centerX - this.doorWidth / 2,
+            height: this.wallThickness
+        });
+        walls.push({
+            x: centerX + this.doorWidth / 2,
+            y: 0,
+            width: centerX - this.doorWidth / 2,
             height: this.wallThickness
         });
 
-        // 하단 벽
+        // 하단 벽 (좌, 우 두 부분으로 나눔 - 중앙에 문)
         walls.push({
             x: 0,
             y: this.canvasHeight - this.wallThickness,
-            width: this.canvasWidth,
+            width: centerX - this.doorWidth / 2,
+            height: this.wallThickness
+        });
+        walls.push({
+            x: centerX + this.doorWidth / 2,
+            y: this.canvasHeight - this.wallThickness,
+            width: centerX - this.doorWidth / 2,
             height: this.wallThickness
         });
 
-        // 좌측 벽
+        // 좌측 벽 (상, 하 두 부분으로 나눔 - 중앙에 문)
         walls.push({
             x: 0,
             y: 0,
             width: this.wallThickness,
-            height: this.canvasHeight
+            height: centerY - this.doorWidth / 2
+        });
+        walls.push({
+            x: 0,
+            y: centerY + this.doorWidth / 2,
+            width: this.wallThickness,
+            height: centerY - this.doorWidth / 2
         });
 
-        // 우측 벽
+        // 우측 벽 (상, 하 두 부분으로 나눔 - 중앙에 문)
         walls.push({
             x: this.canvasWidth - this.wallThickness,
             y: 0,
             width: this.wallThickness,
-            height: this.canvasHeight
+            height: centerY - this.doorWidth / 2
+        });
+        walls.push({
+            x: this.canvasWidth - this.wallThickness,
+            y: centerY + this.doorWidth / 2,
+            width: this.wallThickness,
+            height: centerY - this.doorWidth / 2
         });
 
         return walls;
@@ -82,6 +123,17 @@ class Room {
         return false;
     }
 
+    // 문과의 충돌 체크
+    checkDoorCollision(player) {
+        for (const direction in this.doors) {
+            const door = this.doors[direction];
+            if (door.checkCollision(player)) {
+                return direction;
+            }
+        }
+        return null;
+    }
+
     // 방 그리기
     draw(ctx) {
         // 바닥
@@ -107,6 +159,11 @@ class Room {
             // 그림자 효과
             ctx.fillStyle = '#444';
             ctx.fillRect(wall.x + 4, wall.y + 4, wall.width - 8, wall.height - 8);
+        }
+
+        // 문 그리기
+        for (const direction in this.doors) {
+            this.doors[direction].draw(ctx);
         }
 
         // 타일 그리드 (선택사항 - 바닥에 격자무늬)
