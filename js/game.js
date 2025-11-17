@@ -22,6 +22,12 @@ class Game {
         // 시간 관리
         this.lastTime = 0;
 
+        // 방 전환 상태
+        this.isTransitioning = false;
+        this.transitionDelay = 500; // 0.5초 딜레이
+        this.transitionTimer = 0;
+        this.nextRoomDirection = null;
+
         this.setupEventListeners();
     }
 
@@ -138,8 +144,17 @@ class Game {
         }
     }
 
-    // 다음 방으로 이동
-    enterDoor(direction) {
+    // 방 전환 시작
+    startRoomTransition(direction) {
+        this.isTransitioning = true;
+        this.transitionTimer = 0;
+        this.nextRoomDirection = direction;
+    }
+
+    // 방 전환 완료
+    completeRoomTransition() {
+        const direction = this.nextRoomDirection;
+
         // 플레이어 위치를 반대편 문 근처로 이동
         const centerX = this.canvas.width / 2;
         const centerY = this.canvas.height / 2;
@@ -166,6 +181,11 @@ class Game {
 
         // 새로운 방 로드 (적 있음)
         this.loadRoom(true);
+
+        // 전환 상태 리셋
+        this.isTransitioning = false;
+        this.transitionTimer = 0;
+        this.nextRoomDirection = null;
     }
 
     // 적 생성 헬퍼 함수
@@ -195,6 +215,16 @@ class Game {
     }
 
     update(deltaTime, currentTime) {
+        // 방 전환 중이면 타이머 업데이트
+        if (this.isTransitioning) {
+            this.transitionTimer += deltaTime * 1000;
+            if (this.transitionTimer >= this.transitionDelay) {
+                // 전환 완료, 새 방으로 이동
+                this.completeRoomTransition();
+            }
+            return; // 전환 중에는 다른 업데이트 안 함
+        }
+
         // 플레이어 업데이트
         if (this.player) {
             this.player.update(deltaTime, this.canvas.width, this.canvas.height);
@@ -205,8 +235,8 @@ class Game {
 
                 // 문 충돌 체크
                 const doorDirection = this.room.checkDoorCollision(this.player);
-                if (doorDirection) {
-                    this.enterDoor(doorDirection);
+                if (doorDirection && !this.isTransitioning) {
+                    this.startRoomTransition(doorDirection);
                 }
             }
 
@@ -380,6 +410,22 @@ class Game {
 
         // UI/HUD 그리기
         this.ui.draw(this.ctx, this.player, this.score);
+
+        // 방 전환 중이면 어두운 오버레이
+        if (this.isTransitioning) {
+            const progress = this.transitionTimer / this.transitionDelay;
+            // 페이드 인/아웃 (0 -> 1 -> 0)
+            const alpha = progress < 0.5 ? progress * 2 : (1 - progress) * 2;
+            this.ctx.fillStyle = `rgba(0, 0, 0, ${alpha * 0.7})`;
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+            // "이동 중..." 텍스트
+            this.ctx.fillStyle = 'white';
+            this.ctx.font = 'bold 24px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText('이동 중...', this.canvas.width / 2, this.canvas.height / 2);
+            this.ctx.textAlign = 'left';
+        }
     }
 
     clear() {
