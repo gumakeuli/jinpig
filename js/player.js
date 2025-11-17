@@ -235,29 +235,36 @@ class Player {
         this.lastFireTime = currentTime;
     }
 
-    // 발사 방향 가져오기 (방향키)
+    // 발사 방향 가져오기 (방향키) - 4방향만 (대각선 불가)
     getShootDirection() {
         let dx = 0;
         let dy = 0;
 
-        if (this.keys.arrowUp) dy -= 1;
-        if (this.keys.arrowDown) dy += 1;
-        if (this.keys.arrowLeft) dx -= 1;
-        if (this.keys.arrowRight) dx += 1;
-
-        // 정규화
-        if (dx !== 0 || dy !== 0) {
-            const length = Math.sqrt(dx * dx + dy * dy);
-            dx /= length;
-            dy /= length;
+        // 우선순위: 상하 > 좌우 (동시에 누르면 상하만 발사)
+        if (this.keys.arrowUp) {
+            dy = -1;
+        } else if (this.keys.arrowDown) {
+            dy = 1;
+        } else if (this.keys.arrowLeft) {
+            dx = -1;
+        } else if (this.keys.arrowRight) {
+            dx = 1;
         }
 
         return { x: dx, y: dy };
     }
 
-    // 발사 키가 눌렸는지 확인
+    // 발사 키가 눌렸는지 확인 (4방향만, 대각선 막기)
     isShootingKeyPressed() {
-        return this.keys.arrowUp || this.keys.arrowDown ||
-               this.keys.arrowLeft || this.keys.arrowRight;
+        // 정확히 하나의 방향키만 눌렸을 때만 발사
+        const upDown = this.keys.arrowUp || this.keys.arrowDown;
+        const leftRight = this.keys.arrowLeft || this.keys.arrowRight;
+
+        // 상하와 좌우가 동시에 눌리면 발사 안 함
+        if (upDown && leftRight) {
+            return false;
+        }
+
+        return upDown || leftRight;
     }
 }
