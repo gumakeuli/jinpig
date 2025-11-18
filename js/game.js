@@ -16,8 +16,12 @@ class Game {
         this.projectiles = [];
         this.enemies = [];
         this.items = [];
+        this.stars = []; // 별의 소리
         this.room = null;
         this.ui = new UI(this.canvas.width, this.canvas.height);
+
+        // 별의 소리 카운트
+        this.starCount = 0;
 
         // 던전 시스템
         this.dungeon = null;
@@ -445,13 +449,14 @@ class Game {
                 this.room.constrainEntity(this.enemies[i]);
             }
 
-            // 죽은 적 제거 (아이템 드롭 가능성)
+            // 죽은 적 제거 (별의 소리 드롭)
             if (!this.enemies[i].active) {
-                // 50% 확률로 아이템 드롭
-                if (Math.random() < 0.5) {
-                    const itemTypes = ['health', 'damage', 'speed', 'firerate', 'heal'];
-                    const randomType = randomChoice(itemTypes);
-                    this.spawnItem(this.enemies[i].x, this.enemies[i].y, randomType);
+                const enemy = this.enemies[i];
+
+                // 별의 소리 드롭
+                const starCount = enemy.getStarDropCount();
+                for (let j = 0; j < starCount; j++) {
+                    this.spawnStar(enemy.x, enemy.y);
                 }
 
                 this.enemies.splice(i, 1);
@@ -466,6 +471,16 @@ class Game {
             // 비활성 아이템 제거
             if (!this.items[i].active) {
                 this.items.splice(i, 1);
+            }
+        }
+
+        // 별의 소리 업데이트
+        for (let i = this.stars.length - 1; i >= 0; i--) {
+            this.stars[i].update(deltaTime, this.canvas.width, this.canvas.height, this.room.bounds);
+
+            // 비활성 별 제거
+            if (!this.stars[i].active) {
+                this.stars.splice(i, 1);
             }
         }
 
@@ -557,6 +572,24 @@ class Game {
                 this.updateScore(5); // 아이템 획득 점수
             }
         }
+
+        // 플레이어 vs 별의 소리 충돌
+        for (let i = this.stars.length - 1; i >= 0; i--) {
+            const star = this.stars[i];
+            const starBounds = star.getBounds();
+
+            if (checkCollision(playerBounds, starBounds)) {
+                // 별의 소리 획득
+                this.starCount++;
+                this.stars.splice(i, 1);
+            }
+        }
+    }
+
+    // 별의 소리 생성
+    spawnStar(x, y) {
+        const star = new Star(x, y);
+        this.stars.push(star);
     }
 
     draw() {
@@ -570,6 +603,11 @@ class Game {
         // 아이템 그리기 (바닥에 먼저)
         for (const item of this.items) {
             item.draw(this.ctx);
+        }
+
+        // 별의 소리 그리기
+        for (const star of this.stars) {
+            star.draw(this.ctx);
         }
 
         // 적 그리기
@@ -600,6 +638,10 @@ class Game {
         this.ctx.font = 'bold 20px Arial';
         this.ctx.textAlign = 'left';
         this.ctx.fillText(`스테이지 ${this.level}`, 16, 60);
+
+        // 별의 소리 카운트 (왼쪽 상단)
+        this.ctx.fillStyle = '#ffff00';
+        this.ctx.fillText(`⭐ ${this.starCount}`, 16, 85);
 
         // 방 전환 중이면 어두운 오버레이
         if (this.isTransitioning) {

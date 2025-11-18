@@ -33,18 +33,33 @@ class Enemy {
                 this.maxHealth = 3;
                 this.damage = 1;
                 this.color = '#ff0000';
+                // 별의 소리 드랍 (0개: 60%, 1개: 40%)
+                this.starDropTable = [
+                    { count: 0, chance: 0.6 },
+                    { count: 1, chance: 0.4 }
+                ];
                 break;
             case 'fast':
                 this.speed = 150;
                 this.maxHealth = 2;
                 this.damage = 1;
                 this.color = '#ff6600';
+                // 별의 소리 드랍 (나중에 설정 가능)
+                this.starDropTable = [
+                    { count: 0, chance: 0.6 },
+                    { count: 1, chance: 0.4 }
+                ];
                 break;
             case 'tank':
                 this.speed = 50;
                 this.maxHealth = 8;
                 this.damage = 2;
                 this.color = '#cc0000';
+                // 별의 소리 드랍 (나중에 설정 가능)
+                this.starDropTable = [
+                    { count: 0, chance: 0.6 },
+                    { count: 1, chance: 0.4 }
+                ];
                 break;
         }
 
@@ -163,5 +178,20 @@ class Enemy {
             width: this.width,
             height: this.height
         };
+    }
+
+    // 별의 소리 드랍 개수 계산
+    getStarDropCount() {
+        const random = Math.random();
+        let cumulativeChance = 0;
+
+        for (const drop of this.starDropTable) {
+            cumulativeChance += drop.chance;
+            if (random <= cumulativeChance) {
+                return drop.count;
+            }
+        }
+
+        return 0; // 기본값
     }
 }
