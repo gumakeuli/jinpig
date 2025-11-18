@@ -27,6 +27,8 @@ class Game {
         this.transitionDelay = 500; // 0.5초 딜레이
         this.transitionTimer = 0;
         this.nextRoomDirection = null;
+        this.transitionCooldown = 0; // 전환 후 쿨다운
+        this.transitionCooldownDuration = 1000; // 1초 쿨다운
 
         this.setupEventListeners();
     }
@@ -141,6 +143,12 @@ class Game {
             // 아이템도 생성
             this.spawnItem(300, 200, 'health');
             this.spawnItem(500, 200, 'damage');
+
+            // 적이 있는 방은 문을 닫음
+            this.room.closeAllDoors();
+        } else {
+            // 시작 방은 문을 열어둠
+            this.room.openAllDoors();
         }
     }
 
@@ -186,6 +194,9 @@ class Game {
         this.isTransitioning = false;
         this.transitionTimer = 0;
         this.nextRoomDirection = null;
+
+        // 쿨다운 시작 (다시 문에 닿아도 바로 전환 안 됨)
+        this.transitionCooldown = this.transitionCooldownDuration;
     }
 
     // 적 생성 헬퍼 함수
@@ -215,6 +226,11 @@ class Game {
     }
 
     update(deltaTime, currentTime) {
+        // 쿨다운 업데이트
+        if (this.transitionCooldown > 0) {
+            this.transitionCooldown -= deltaTime * 1000;
+        }
+
         // 방 전환 중이면 타이머 업데이트
         if (this.isTransitioning) {
             this.transitionTimer += deltaTime * 1000;
@@ -233,10 +249,12 @@ class Game {
             if (this.room) {
                 this.room.constrainEntity(this.player);
 
-                // 문 충돌 체크
-                const doorDirection = this.room.checkDoorCollision(this.player);
-                if (doorDirection && !this.isTransitioning) {
-                    this.startRoomTransition(doorDirection);
+                // 문 충돌 체크 (쿨다운 중이 아닐 때만)
+                if (this.transitionCooldown <= 0) {
+                    const doorDirection = this.room.checkDoorCollision(this.player);
+                    if (doorDirection && !this.isTransitioning) {
+                        this.startRoomTransition(doorDirection);
+                    }
                 }
             }
 

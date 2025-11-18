@@ -8,15 +8,6 @@ class UI {
         this.heartSize = 24;
         this.heartSpacing = 8;
         this.heartPadding = 16;
-
-        // 하트 이미지 로드
-        this.heartImage = new Image();
-        this.heartImage.src = 'assets/images/7.png';
-        this.heartImageLoaded = false;
-
-        this.heartImage.onload = () => {
-            this.heartImageLoaded = true;
-        };
     }
 
     // HUD 그리기
@@ -54,32 +45,59 @@ class UI {
     // 채워진 하트
     drawFilledHeart(ctx, x, y) {
         const size = this.heartSize;
+        const halfSize = size / 2;
 
-        // 이미지가 로드되었으면 이미지로, 아니면 기본 하트
-        if (this.heartImageLoaded) {
-            ctx.drawImage(this.heartImage, x, y, size, size);
-        } else {
-            // 로딩 중에는 빨간 사각형
-            ctx.fillStyle = '#ff0000';
-            ctx.fillRect(x, y, size, size);
-        }
+        ctx.fillStyle = '#ff0000';
+        ctx.beginPath();
+
+        // 왼쪽 원
+        ctx.arc(x + halfSize / 2, y + halfSize / 2, halfSize / 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 오른쪽 원
+        ctx.beginPath();
+        ctx.arc(x + halfSize + halfSize / 2, y + halfSize / 2, halfSize / 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 아래 삼각형
+        ctx.beginPath();
+        ctx.moveTo(x, y + halfSize / 2);
+        ctx.lineTo(x + halfSize, y + size);
+        ctx.lineTo(x + size, y + halfSize / 2);
+        ctx.closePath();
+        ctx.fill();
+
+        // 테두리
+        ctx.strokeStyle = '#990000';
+        ctx.lineWidth = 2;
+        ctx.stroke();
     }
 
     // 빈 하트
     drawEmptyHeart(ctx, x, y) {
         const size = this.heartSize;
+        const halfSize = size / 2;
 
-        // 이미지가 로드되었으면 반투명하게, 아니면 회색 테두리
-        if (this.heartImageLoaded) {
-            ctx.globalAlpha = 0.3;
-            ctx.drawImage(this.heartImage, x, y, size, size);
-            ctx.globalAlpha = 1.0;
-        } else {
-            // 로딩 중에는 회색 사각형
-            ctx.strokeStyle = '#666';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(x, y, size, size);
-        }
+        ctx.strokeStyle = '#666';
+        ctx.lineWidth = 2;
+
+        // 왼쪽 원
+        ctx.beginPath();
+        ctx.arc(x + halfSize / 2, y + halfSize / 2, halfSize / 2, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // 오른쪽 원
+        ctx.beginPath();
+        ctx.arc(x + halfSize + halfSize / 2, y + halfSize / 2, halfSize / 2, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // 아래 삼각형
+        ctx.beginPath();
+        ctx.moveTo(x, y + halfSize / 2);
+        ctx.lineTo(x + halfSize, y + size);
+        ctx.lineTo(x + size, y + halfSize / 2);
+        ctx.closePath();
+        ctx.stroke();
     }
 
     // 점수 표시

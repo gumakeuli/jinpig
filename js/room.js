@@ -35,6 +35,20 @@ class Room {
         };
     }
 
+    // 모든 문 열기
+    openAllDoors() {
+        for (const direction in this.doors) {
+            this.doors[direction].open();
+        }
+    }
+
+    // 모든 문 닫기
+    closeAllDoors() {
+        for (const direction in this.doors) {
+            this.doors[direction].close();
+        }
+    }
+
     // 벽 생성 (문 구멍 포함)
     createWalls() {
         const walls = [];
