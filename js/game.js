@@ -225,6 +225,11 @@ class Game {
             // 시작 방은 문을 열어둠
             this.room.openAllDoors();
         }
+
+        // 장애물 생성 (시작방과 보스방 제외)
+        if (roomType !== 'start' && roomType !== 'boss') {
+            this.room.generateObstacles();
+        }
     }
 
     // 방 전환 시작
@@ -409,6 +414,45 @@ class Game {
             if (this.room) {
                 this.room.constrainEntity(this.player);
 
+                // 장애물 충돌 체크
+                const collidedObstacle = this.room.checkObstacleCollision(this.player);
+                if (collidedObstacle) {
+                    // 플레이어를 장애물에서 밀어냄
+                    const playerBounds = this.player.getBounds();
+                    const obstacleBounds = collidedObstacle.getBounds();
+
+                    // 겹친 부분 계산
+                    const overlapX = Math.min(
+                        playerBounds.x + playerBounds.width - obstacleBounds.x,
+                        obstacleBounds.x + obstacleBounds.width - playerBounds.x
+                    );
+                    const overlapY = Math.min(
+                        playerBounds.y + playerBounds.height - obstacleBounds.y,
+                        obstacleBounds.y + obstacleBounds.height - playerBounds.y
+                    );
+
+                    // 겹친 부분이 작은 축으로 밀어냄
+                    if (overlapX < overlapY) {
+                        if (this.player.x < collidedObstacle.x) {
+                            this.player.x -= overlapX;
+                        } else {
+                            this.player.x += overlapX;
+                        }
+                    } else {
+                        if (this.player.y < collidedObstacle.y) {
+                            this.player.y -= overlapY;
+                        } else {
+                            this.player.y += overlapY;
+                        }
+                    }
+
+                    // 장애물과의 상호작용 (거미줄, 가시 등)
+                    const damage = collidedObstacle.interactWithPlayer(this.player);
+                    if (damage > 0) {
+                        this.player.takeDamage(damage);
+                    }
+                }
+
                 // 문 충돌 체크 (쿨다운 중이 아닐 때만)
                 if (this.transitionCooldown <= 0) {
                     const doorDirection = this.room.checkDoorCollision(this.player);
@@ -447,10 +491,20 @@ class Game {
                 this.projectiles[i].active = false;
             }
 
+            // 장애물 충돌 체크 (바위만 막음, 구멍/거미줄/가시는 통과)
+            if (this.room && this.room.checkObstacleProjectileCollision(this.projectiles[i])) {
+                this.projectiles[i].active = false;
+            }
+
             // 비활성화된 발사체 제거
             if (!this.projectiles[i].active) {
                 this.projectiles.splice(i, 1);
             }
+        }
+
+        // 장애물 업데이트
+        if (this.room) {
+            this.room.updateObstacles(deltaTime);
         }
 
         // 적 업데이트
@@ -611,6 +665,11 @@ class Game {
         // 방 그리기 (배경 + 벽)
         if (this.room) {
             this.room.draw(this.ctx);
+        }
+
+        // 장애물 그리기 (바닥 레이어)
+        if (this.room) {
+            this.room.drawObstacles(this.ctx);
         }
 
         // 아이템 그리기 (바닥에 먼저)

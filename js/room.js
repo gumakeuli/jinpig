@@ -23,6 +23,9 @@ class Room {
 
         // 벽 목록 (문 구멍 포함)
         this.walls = this.createWalls();
+
+        // 장애물 목록
+        this.obstacles = [];
     }
 
     // 4방향 문 생성
@@ -219,4 +222,151 @@ class Room {
             ctx.stroke();
         }
     }
+
+    // 장애물 생성 (아이작 스타일)
+    generateObstacles() {
+        this.obstacles = [];
+
+        // 장애물 개수 결정 (3~8개)
+        const obstacleCount = Math.floor(Math.random() * 6) + 3;
+
+        // 문 근처 금지 구역 설정
+        const doorSafeZone = this.tileSize * 2.5; // 문에서 2.5타일 거리
+
+        // 중앙 통로 확보 (가로/세로 중앙 ±1타일은 비워둠)
+        const centerX = this.canvasWidth / 2;
+        const centerY = this.canvasHeight / 2;
+        const centerSafeZone = this.tileSize * 1.5;
+
+        // 타입별 확률 (바위 50%, 구멍 30%, 거미줄 15%, 가시 5%)
+        const typeWeights = [
+            { type: 'rock', weight: 50 },
+            { type: 'pit', weight: 30 },
+            { type: 'cobweb', weight: 15 },
+            { type: 'spike', weight: 5 }
+        ];
+
+        let attempts = 0;
+        const maxAttempts = 100;
+
+        while (this.obstacles.length < obstacleCount && attempts < maxAttempts) {
+            attempts++;
+
+            // 랜덤 위치 생성 (타일 그리드에 맞춤)
+            const gridX = Math.floor(Math.random() * 12) + 2; // 2~13
+            const gridY = Math.floor(Math.random() * 8) + 2;  // 2~9
+
+            const x = this.bounds.left + gridX * this.tileSize;
+            const y = this.bounds.top + gridY * this.tileSize;
+
+            // 문 근처 체크
+            const nearTopDoor = y < this.bounds.top + doorSafeZone;
+            const nearBottomDoor = y > this.bounds.bottom - doorSafeZone;
+            const nearLeftDoor = x < this.bounds.left + doorSafeZone;
+            const nearRightDoor = x > this.bounds.right - doorSafeZone;
+
+            if (nearTopDoor || nearBottomDoor || nearLeftDoor || nearRightDoor) {
+                continue;
+            }
+
+            // 중앙 통로 체크
+            const nearCenterX = Math.abs(x - centerX) < centerSafeZone;
+            const nearCenterY = Math.abs(y - centerY) < centerSafeZone;
+
+            if (nearCenterX && nearCenterY) {
+                continue;
+            }
+
+            // 다른 장애물과 겹치는지 체크
+            let overlaps = false;
+            for (const obstacle of this.obstacles) {
+                const dx = Math.abs(obstacle.x - x);
+                const dy = Math.abs(obstacle.y - y);
+                if (dx < this.tileSize && dy < this.tileSize) {
+                    overlaps = true;
+                    break;
+                }
+            }
+
+            if (overlaps) {
+                continue;
+            }
+
+            // 타입 결정 (가중치 기반)
+            const random = Math.random() * 100;
+            let cumulativeWeight = 0;
+            let selectedType = 'rock';
+
+            for (const typeWeight of typeWeights) {
+                cumulativeWeight += typeWeight.weight;
+                if (random <= cumulativeWeight) {
+                    selectedType = typeWeight.type;
+                    break;
+                }
+            }
+
+            // 장애물 생성
+            const obstacle = new Obstacle(x, y, selectedType);
+            this.obstacles.push(obstacle);
+        }
+    }
+
+    // 장애물 업데이트
+    updateObstacles(deltaTime) {
+        for (const obstacle of this.obstacles) {
+            obstacle.update(deltaTime);
+        }
+    }
+
+    // 장애물 그리기
+    drawObstacles(ctx) {
+        for (const obstacle of this.obstacles) {
+            obstacle.draw(ctx);
+        }
+    }
+
+    // 장애물과의 충돌 체크 (엔티티용)
+    checkObstacleCollision(entity) {
+        const entityBounds = entity.getBounds();
+
+        for (const obstacle of this.obstacles) {
+            if (!obstacle.active) continue;
+            if (!obstacle.blocksMovement) continue;
+
+            const obstacleBounds = obstacle.getBounds();
+
+            // AABB 충돌 체크
+            if (entityBounds.x < obstacleBounds.x + obstacleBounds.width &&
+                entityBounds.x + entityBounds.width > obstacleBounds.x &&
+                entityBounds.y < obstacleBounds.y + obstacleBounds.height &&
+                entityBounds.y + entityBounds.height > obstacleBounds.y) {
+                return obstacle;
+            }
+        }
+
+        return null;
+    }
+
+    // 장애물과 발사체 충돌 체크
+    checkObstacleProjectileCollision(projectile) {
+        const projectileBounds = projectile.getBounds();
+
+        for (const obstacle of this.obstacles) {
+            if (!obstacle.active) continue;
+            if (!obstacle.blocksProjectiles) continue;
+
+            const obstacleBounds = obstacle.getBounds();
+
+            // AABB 충돌 체크
+            if (projectileBounds.x < obstacleBounds.x + obstacleBounds.width &&
+                projectileBounds.x + projectileBounds.width > obstacleBounds.x &&
+                projectileBounds.y < obstacleBounds.y + obstacleBounds.height &&
+                projectileBounds.y + projectileBounds.height > obstacleBounds.y) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }
+
