@@ -303,4 +303,14 @@ class Player {
 
         return upDown || leftRight;
     }
+
+    // 충돌 체크용 경계 가져오기
+    getBounds() {
+        return {
+            x: this.x - this.width / 2,
+            y: this.y - this.height / 2,
+            width: this.width,
+            height: this.height
+        };
+    }
 }
