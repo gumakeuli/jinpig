@@ -3,8 +3,8 @@ class Star {
     constructor(x, y) {
         this.x = x;
         this.y = y;
-        this.width = 20;
-        this.height = 20;
+        this.width = 32;
+        this.height = 32;
         this.active = true;
 
         // 이미지 로드

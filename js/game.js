@@ -324,13 +324,8 @@ class Game {
     nextStage() {
         this.level++;
 
-        // 플레이어 체력 회복 및 최대 체력 증가 (보너스)
+        // 플레이어 체력 회복 (보너스)
         if (this.player) {
-            // 최대 체력 증가 (7까지)
-            if (this.player.maxHealth < this.player.maxHealthCap) {
-                this.player.maxHealth++;
-            }
-            // 체력 회복
             this.player.health = Math.min(this.player.health + 1, this.player.maxHealth);
         }
 
@@ -631,7 +626,7 @@ class Game {
         }
 
         // UI/HUD 그리기
-        this.ui.draw(this.ctx, this.player, this.score);
+        this.ui.draw(this.ctx, this.player, this.starCount);
 
         // 미니맵 그리기
         if (this.minimap) {
@@ -643,10 +638,6 @@ class Game {
         this.ctx.font = 'bold 20px Arial';
         this.ctx.textAlign = 'left';
         this.ctx.fillText(`스테이지 ${this.level}`, 16, 60);
-
-        // 별의 소리 카운트 (왼쪽 상단)
-        this.ctx.fillStyle = '#ffff00';
-        this.ctx.fillText(`⭐ ${this.starCount}`, 16, 85);
 
         // 방 전환 중이면 어두운 오버레이
         if (this.isTransitioning) {

@@ -8,17 +8,22 @@ class UI {
         this.heartSize = 24;
         this.heartSpacing = 8;
         this.heartPadding = 16;
+
+        // 별의 소리 이미지 로드
+        this.starImage = new Image();
+        this.starImage.src = 'assets/images/8.webp';
+        this.starImageSize = 28;
     }
 
     // HUD 그리기
-    draw(ctx, player, score) {
+    draw(ctx, player, starCount) {
         if (!player) return;
 
         // 체력 하트 그리기
         this.drawHearts(ctx, player.health, player.maxHealth);
 
-        // 스탯 정보 그리기
-        this.drawStats(ctx, player);
+        // 별의 소리 개수 표시
+        this.drawStarCount(ctx, starCount);
 
         // 조작법 힌트 (게임 하단)
         this.drawControls(ctx);
@@ -100,23 +105,33 @@ class UI {
         ctx.stroke();
     }
 
-    // 스탯 정보 표시
-    drawStats(ctx, player) {
+    // 별의 소리 개수 표시
+    drawStarCount(ctx, starCount) {
         const x = this.heartPadding;
         const y = this.heartPadding + 40; // 하트 아래
 
+        // 별의 소리 이미지
+        if (this.starImage.complete) {
+            ctx.drawImage(
+                this.starImage,
+                x,
+                y - this.starImageSize / 2,
+                this.starImageSize,
+                this.starImageSize
+            );
+        } else {
+            // 로딩 중엔 이모지
+            ctx.fillStyle = '#ffff00';
+            ctx.font = 'bold 24px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText('⭐', x, y);
+        }
+
+        // 개수 표시
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 16px Arial';
+        ctx.font = 'bold 24px Arial';
         ctx.textAlign = 'left';
-
-        // 공격력
-        ctx.fillText(`⚔️ 공격력: ${player.damage}/${5}`, x, y);
-
-        // 공격속도
-        ctx.fillText(`⏱️ 공격속도: ${player.attackSpeed}/${5}`, x, y + 22);
-
-        // 행운
-        ctx.fillText(`🍀 행운: ${player.luck}/${5} (회피 ${player.luck}%)`, x, y + 44);
+        ctx.fillText(`${starCount}`, x + this.starImageSize + 8, y);
     }
 
     // 점수 표시
