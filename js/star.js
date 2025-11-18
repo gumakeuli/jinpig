@@ -11,47 +11,34 @@ class Star {
         this.image = new Image();
         this.image.src = 'assets/images/8.webp';
 
-        // 깜빡임 효과 (아이작 스타일)
-        this.blinkTimer = 0;
-        this.blinkInterval = 0.15; // 0.15초마다 깜빡임
-        this.visible = true;
-
-        // 스케일 애니메이션
-        this.scaleTimer = 0;
-        this.scale = 1;
+        // 떠다니는 효과 (아이작 골드 스타일)
+        this.baseY = y; // 기본 Y 위치
+        this.floatTimer = Math.random() * Math.PI * 2; // 랜덤 시작 위치
+        this.floatSpeed = 2; // 떠다니는 속도
+        this.floatRange = 8; // 위아래로 움직이는 범위 (픽셀)
     }
 
     update(deltaTime, canvasWidth, canvasHeight, roomBounds) {
         if (!this.active) return;
 
-        // 깜빡임 효과
-        this.blinkTimer += deltaTime;
-        if (this.blinkTimer >= this.blinkInterval) {
-            this.visible = !this.visible;
-            this.blinkTimer = 0;
-        }
-
-        // 부드러운 스케일 애니메이션 (크기가 약간 변하는 효과)
-        this.scaleTimer += deltaTime * 3;
-        this.scale = 1 + Math.sin(this.scaleTimer) * 0.1; // 0.9 ~ 1.1 사이로 변함
+        // 떠다니는 효과 (sin 파동)
+        this.floatTimer += deltaTime * this.floatSpeed;
+        this.y = this.baseY + Math.sin(this.floatTimer) * this.floatRange;
     }
 
     draw(ctx) {
-        if (!this.active || !this.visible) return;
+        if (!this.active) return;
 
-        // 스케일 애니메이션 적용
-        const scaledWidth = this.width * this.scale;
-        const scaledHeight = this.height * this.scale;
-        const x = this.x - scaledWidth / 2;
-        const y = this.y - scaledHeight / 2;
+        const x = this.x - this.width / 2;
+        const y = this.y - this.height / 2;
 
         if (this.image.complete) {
-            ctx.drawImage(this.image, x, y, scaledWidth, scaledHeight);
+            ctx.drawImage(this.image, x, y, this.width, this.height);
         } else {
             // 로딩 중엔 노란 별 모양
             ctx.fillStyle = '#ffff00';
             ctx.beginPath();
-            ctx.arc(this.x, this.y, (this.width / 2) * this.scale, 0, Math.PI * 2);
+            ctx.arc(this.x, this.y, this.width / 2, 0, Math.PI * 2);
             ctx.fill();
         }
     }

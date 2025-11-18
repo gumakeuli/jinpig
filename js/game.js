@@ -30,6 +30,11 @@ class Game {
         this.level = 1;
         this.maxLevel = 3; // 최대 3스테이지
 
+        // 스테이지 표시
+        this.showStageText = false;
+        this.stageTextTimer = 0;
+        this.stageTextDuration = 2; // 2초 동안 표시
+
         // 시간 관리
         this.lastTime = 0;
 
@@ -85,6 +90,11 @@ class Game {
         this.updateScore();
 
         this.init();
+
+        // 게임 시작 시 스테이지 텍스트 표시
+        this.showStageText = true;
+        this.stageTextTimer = 0;
+
         // requestAnimationFrame으로 게임 루프 시작
         this.gameLoop = requestAnimationFrame((time) => this.run(time));
     }
@@ -197,15 +207,10 @@ class Game {
             this.spawnEnemy(500, 300, 'fast');
             this.room.closeAllDoors();
         } else if (roomType === 'treasure') {
-            // 보물방: 아이템만
-            this.spawnItem(300, 250, 'health');
-            this.spawnItem(400, 250, 'damage');
-            this.spawnItem(500, 250, 'speed');
+            // 보물방: 비어있음 (나중에 특별 아이템 추가 가능)
             this.room.openAllDoors();
         } else if (roomType === 'shop') {
-            // 상점: 아이템 (나중에 코인 시스템 추가 가능)
-            this.spawnItem(300, 200, 'heal');
-            this.spawnItem(500, 200, 'firerate');
+            // 상점: 비어있음 (나중에 별의 소리로 구매할 아이템 추가 가능)
             this.room.openAllDoors();
         } else if (hasEnemies) {
             // 일반 전투 방
@@ -213,10 +218,6 @@ class Game {
             this.spawnEnemy(600, 150, 'basic');
             this.spawnEnemy(400, 120, 'fast');
             this.spawnEnemy(150, 400, 'tank');
-
-            // 아이템도 생성
-            this.spawnItem(300, 200, 'health');
-            this.spawnItem(500, 200, 'damage');
 
             // 적이 있는 방은 문을 닫음
             this.room.closeAllDoors();
@@ -329,6 +330,10 @@ class Game {
             this.player.health = Math.min(this.player.health + 1, this.player.maxHealth);
         }
 
+        // 스테이지 텍스트 표시
+        this.showStageText = true;
+        this.stageTextTimer = 0;
+
         // 새 던전 생성
         const generator = new DungeonGenerator(this.level);
         this.dungeon = generator.generate();
@@ -373,6 +378,14 @@ class Game {
     }
 
     update(deltaTime, currentTime) {
+        // 스테이지 텍스트 타이머 업데이트
+        if (this.showStageText) {
+            this.stageTextTimer += deltaTime;
+            if (this.stageTextTimer >= this.stageTextDuration) {
+                this.showStageText = false;
+            }
+        }
+
         // 쿨다운 업데이트
         if (this.transitionCooldown > 0) {
             this.transitionCooldown -= deltaTime * 1000;
@@ -633,11 +646,19 @@ class Game {
             this.minimap.draw(this.ctx);
         }
 
-        // 스테이지 표시 (왼쪽 상단)
-        this.ctx.fillStyle = '#ffffff';
-        this.ctx.font = 'bold 20px Arial';
-        this.ctx.textAlign = 'left';
-        this.ctx.fillText(`스테이지 ${this.level}`, 16, 60);
+        // 스테이지 텍스트 표시 (게임 시작 및 스테이지 전환 시)
+        if (this.showStageText) {
+            // 반투명 배경
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+            // 스테이지 텍스트
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.font = 'bold 72px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText(`STAGE ${this.level}`, this.canvas.width / 2, this.canvas.height / 2);
+            this.ctx.textAlign = 'left';
+        }
 
         // 방 전환 중이면 어두운 오버레이
         if (this.isTransitioning) {
