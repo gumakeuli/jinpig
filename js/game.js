@@ -166,6 +166,18 @@ class Game {
         return directions;
     }
 
+    // 두 방 사이의 방향 계산
+    getDirectionBetween(fromId, toId) {
+        const diff = toId - fromId;
+
+        if (diff === -10) return 'top';
+        else if (diff === 10) return 'bottom';
+        else if (diff === -1) return 'left';
+        else if (diff === 1) return 'right';
+
+        return null;
+    }
+
     // ID로 방 로드 (던전 시스템용)
     loadRoomById(roomId) {
         const roomData = this.dungeon.rooms.get(roomId);
@@ -192,6 +204,17 @@ class Game {
         if (neighbors.length > 0) {
             const neighborDirections = this.getNeighborDirections(neighbors);
             this.room.setNeighbors(neighborDirections);
+
+            // 이웃 중에 보물방이 있으면 해당 방향 문을 보물방 문으로 설정
+            for (const neighborId of neighbors) {
+                const neighborData = this.dungeon.rooms.get(neighborId);
+                if (neighborData && neighborData.type === 'treasure') {
+                    const directionToTreasure = this.getDirectionBetween(this.currentRoomId, neighborId);
+                    if (directionToTreasure) {
+                        this.room.setTreasureDoor(directionToTreasure);
+                    }
+                }
+            }
         }
 
         // 기존 엔티티 제거
@@ -207,7 +230,14 @@ class Game {
             this.spawnEnemy(500, 300, 'fast');
             this.room.closeAllDoors();
         } else if (roomType === 'treasure') {
-            // 보물방: 비어있음 (나중에 특별 아이템 추가 가능)
+            // 보물방: 중앙에 아이템 생성
+            const centerX = this.canvas.width / 2;
+            const centerY = this.canvas.height / 2;
+
+            // 테스트용 아이템 (나중에 이미지 추가 예정)
+            this.spawnItem(centerX, centerY, 'damage', null);
+
+            // 모든 문 열기 (장애물 없음)
             this.room.openAllDoors();
         } else if (roomType === 'shop') {
             // 상점: 비어있음 (나중에 별의 소리로 구매할 아이템 추가 가능)
@@ -308,8 +338,8 @@ class Game {
     }
 
     // 아이템 생성 헬퍼 함수
-    spawnItem(x, y, type) {
-        const item = new Item(x, y, type);
+    spawnItem(x, y, type, imagePath = null) {
+        const item = new Item(x, y, type, imagePath);
         this.items.push(item);
     }
 
@@ -377,7 +407,7 @@ class Game {
         this.lastTime = currentTime;
 
         this.update(deltaTime, currentTime);
-        this.draw();
+        this.draw(deltaTime);
 
         this.gameLoop = requestAnimationFrame((time) => this.run(time));
     }
@@ -659,12 +689,12 @@ class Game {
         this.stars.push(star);
     }
 
-    draw() {
+    draw(deltaTime = 0) {
         this.clear();
 
         // 방 그리기 (배경 + 벽)
         if (this.room) {
-            this.room.draw(this.ctx);
+            this.room.draw(this.ctx, deltaTime);
         }
 
         // 장애물 그리기 (바닥 레이어)

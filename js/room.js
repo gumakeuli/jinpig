@@ -53,6 +53,13 @@ class Room {
         }
     }
 
+    // 보물방 문으로 설정
+    setTreasureDoor(direction) {
+        if (this.doors[direction]) {
+            this.doors[direction].isTreasureDoor = true;
+        }
+    }
+
     // 모든 문 열기
     openAllDoors() {
         for (const direction in this.doors) {
@@ -171,7 +178,7 @@ class Room {
     }
 
     // 방 그리기
-    draw(ctx) {
+    draw(ctx, deltaTime = 0) {
         // 바닥
         ctx.fillStyle = '#333';
         ctx.fillRect(
@@ -199,7 +206,7 @@ class Room {
 
         // 문 그리기
         for (const direction in this.doors) {
-            this.doors[direction].draw(ctx);
+            this.doors[direction].draw(ctx, deltaTime);
         }
 
         // 타일 그리드 (선택사항 - 바닥에 격자무늬)

@@ -1,16 +1,36 @@
 // 아이템 클래스
 class Item {
-    constructor(x, y, type) {
+    constructor(x, y, type, imagePath = null) {
         this.x = x;
         this.y = y;
         this.type = type;
-        this.width = 28;
-        this.height = 28;
+        this.width = 48;
+        this.height = 48;
         this.active = true;
 
+        // 받침대 이미지 (11번)
+        this.pedestalImage = new Image();
+        this.pedestalImage.src = 'assets/images/11.webp';
+        this.pedestalLoaded = false;
+        this.pedestalImage.onload = () => {
+            this.pedestalLoaded = true;
+        };
+
+        // 아이템 이미지
+        this.itemImage = null;
+        this.itemLoaded = false;
+        if (imagePath) {
+            this.itemImage = new Image();
+            this.itemImage.src = imagePath;
+            this.itemImage.onload = () => {
+                this.itemLoaded = true;
+            };
+        }
+
         // 떠다니는 애니메이션
-        this.floatOffset = 0;
+        this.floatTimer = Math.random() * Math.PI * 2;
         this.floatSpeed = 2;
+        this.floatRange = 12; // 위아래로 12픽셀
 
         // 타입별 설정
         this.setupType();
@@ -69,61 +89,71 @@ class Item {
     // 업데이트
     update(deltaTime) {
         // 떠다니는 효과
-        this.floatOffset += this.floatSpeed * deltaTime;
+        this.floatTimer += this.floatSpeed * deltaTime;
     }
 
     // 그리기
     draw(ctx) {
-        const floatY = Math.sin(this.floatOffset) * 8;
+        const floatY = Math.sin(this.floatTimer) * this.floatRange;
 
-        // 그림자
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-        ctx.beginPath();
-        ctx.ellipse(
-            this.x,
-            this.y + 12,
-            this.width / 2 - 4,
-            this.height / 4,
-            0, 0, Math.PI * 2
-        );
-        ctx.fill();
+        // 받침대 그리기 (11번 이미지)
+        if (this.pedestalLoaded) {
+            const pedestalWidth = 64;
+            const pedestalHeight = 64;
+            ctx.drawImage(
+                this.pedestalImage,
+                this.x - pedestalWidth / 2,
+                this.y - pedestalHeight / 2 + 10, // 약간 아래에 배치
+                pedestalWidth,
+                pedestalHeight
+            );
+        } else {
+            // 로딩 중이면 회색 받침대
+            ctx.fillStyle = '#666666';
+            ctx.fillRect(this.x - 24, this.y - 12, 48, 24);
+        }
 
-        // 아이템 본체 (다이아몬드 형태)
-        ctx.save();
-        ctx.translate(this.x, this.y + floatY);
+        // 아이템 이미지가 있으면 이미지로, 없으면 기본 다이아몬드
+        if (this.itemImage && this.itemLoaded) {
+            // 아이템 이미지 그리기 (떠다니는 효과)
+            ctx.drawImage(
+                this.itemImage,
+                this.x - this.width / 2,
+                this.y - this.height / 2 + floatY - 20, // 받침대 위에 떠있게
+                this.width,
+                this.height
+            );
 
-        ctx.fillStyle = this.color;
-        ctx.beginPath();
-        ctx.moveTo(0, -this.height / 2);
-        ctx.lineTo(this.width / 2, 0);
-        ctx.lineTo(0, this.height / 2);
-        ctx.lineTo(-this.width / 2, 0);
-        ctx.closePath();
-        ctx.fill();
+            // 은은한 글로우 효과
+            const glowIntensity = (Math.sin(this.floatTimer * 2) + 1) / 2;
+            ctx.save();
+            ctx.globalAlpha = glowIntensity * 0.3;
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(this.x, this.y + floatY - 20, this.width / 2 + 4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        } else {
+            // 기본 다이아몬드 형태 (이미지 없을 때)
+            ctx.save();
+            ctx.translate(this.x, this.y + floatY - 20);
 
-        // 테두리
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 2;
-        ctx.stroke();
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.moveTo(0, -this.height / 2);
+            ctx.lineTo(this.width / 2, 0);
+            ctx.lineTo(0, this.height / 2);
+            ctx.lineTo(-this.width / 2, 0);
+            ctx.closePath();
+            ctx.fill();
 
-        // 중앙 하이라이트
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-        ctx.beginPath();
-        ctx.moveTo(0, -this.height / 3);
-        ctx.lineTo(this.width / 3, 0);
-        ctx.lineTo(0, this.height / 6);
-        ctx.lineTo(-this.width / 4, 0);
-        ctx.closePath();
-        ctx.fill();
+            // 테두리
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
 
-        ctx.restore();
-
-        // 반짝이는 효과
-        const glowIntensity = (Math.sin(this.floatOffset * 2) + 1) / 2;
-        ctx.fillStyle = `rgba(255, 255, 255, ${glowIntensity * 0.5})`;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y + floatY, this.width / 3, 0, Math.PI * 2);
-        ctx.fill();
+            ctx.restore();
+        }
     }
 
     // 충돌 체크용 경계 가져오기

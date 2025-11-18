@@ -11,6 +11,10 @@ class Door {
 
         this.active = true; // 문이 활성화되어 있는지
         this.isOpen = false; // 문이 열려있는지 (처음엔 닫혀있음)
+        this.isTreasureDoor = false; // 보물방 문인지
+
+        // 애니메이션 타이머
+        this.animTimer = Math.random() * Math.PI * 2;
 
         // 방향에 따라 문 위치 설정
         this.setPosition();
@@ -84,11 +88,50 @@ class Door {
     }
 
     // 문 그리기
-    draw(ctx) {
+    draw(ctx, deltaTime = 0) {
         if (!this.active) return;
 
-        if (this.isOpen) {
-            // 열린 문 - 밝고 빛나는 느낌
+        // 애니메이션 타이머 업데이트
+        this.animTimer += deltaTime * 2;
+
+        const centerX = this.x + this.width / 2;
+        const centerY = this.y + this.height / 2;
+
+        // 보물방 문 (청록색 신비 문)
+        if (this.isTreasureDoor) {
+            // 에너지 파동 애니메이션
+            const pulseIntensity = (Math.sin(this.animTimer) + 1) / 2; // 0~1
+
+            // 기본 베이스 (어두운 청록색)
+            ctx.fillStyle = '#004d4d';
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+
+            // 빛나는 그라디언트
+            const gradient = ctx.createLinearGradient(this.x, this.y, this.x + this.width, this.y + this.height);
+            gradient.addColorStop(0, `rgba(0, 255, 255, ${0.3 + pulseIntensity * 0.3})`);
+            gradient.addColorStop(0.5, `rgba(0, 200, 255, ${0.5 + pulseIntensity * 0.2})`);
+            gradient.addColorStop(1, `rgba(0, 255, 255, ${0.3 + pulseIntensity * 0.3})`);
+            ctx.fillStyle = gradient;
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+
+            // 외곽 글로우
+            ctx.shadowBlur = 15 + pulseIntensity * 10;
+            ctx.shadowColor = '#00ffff';
+            ctx.strokeStyle = `rgba(0, 255, 255, ${0.8 + pulseIntensity * 0.2})`;
+            ctx.lineWidth = 3;
+            ctx.strokeRect(this.x, this.y, this.width, this.height);
+            ctx.shadowBlur = 0;
+
+            // 중앙 빛 효과
+            const radialGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, Math.max(this.width, this.height) / 2);
+            radialGradient.addColorStop(0, `rgba(255, 255, 255, ${0.4 + pulseIntensity * 0.2})`);
+            radialGradient.addColorStop(0.5, `rgba(0, 255, 255, ${0.2 + pulseIntensity * 0.1})`);
+            radialGradient.addColorStop(1, 'rgba(0, 255, 255, 0)');
+            ctx.fillStyle = radialGradient;
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+
+        } else if (this.isOpen) {
+            // 일반 열린 문 - 밝고 빛나는 느낌
             ctx.fillStyle = '#00ff00';
             ctx.fillRect(this.x, this.y, this.width, this.height);
 
@@ -98,8 +141,6 @@ class Door {
             ctx.strokeRect(this.x, this.y, this.width, this.height);
 
             // 중앙 빛 효과
-            const centerX = this.x + this.width / 2;
-            const centerY = this.y + this.height / 2;
             const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, Math.max(this.width, this.height) / 2);
             gradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
             gradient.addColorStop(1, 'rgba(0, 255, 0, 0.2)');
