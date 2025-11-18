@@ -544,6 +544,39 @@ class Game {
             // 방 경계 제약
             if (this.room) {
                 this.room.constrainEntity(this.enemies[i]);
+
+                // 장애물 충돌 체크
+                const collidedObstacle = this.room.checkObstacleCollision(this.enemies[i]);
+                if (collidedObstacle) {
+                    // 적을 장애물에서 밀어냄
+                    const enemyBounds = this.enemies[i].getBounds();
+                    const obstacleBounds = collidedObstacle.getBounds();
+
+                    // 겹친 부분 계산
+                    const overlapX = Math.min(
+                        enemyBounds.x + enemyBounds.width - obstacleBounds.x,
+                        obstacleBounds.x + obstacleBounds.width - enemyBounds.x
+                    );
+                    const overlapY = Math.min(
+                        enemyBounds.y + enemyBounds.height - obstacleBounds.y,
+                        obstacleBounds.y + obstacleBounds.height - enemyBounds.y
+                    );
+
+                    // 겹친 부분이 작은 축으로 밀어냄
+                    if (overlapX < overlapY) {
+                        if (this.enemies[i].x < collidedObstacle.x) {
+                            this.enemies[i].x -= overlapX;
+                        } else {
+                            this.enemies[i].x += overlapX;
+                        }
+                    } else {
+                        if (this.enemies[i].y < collidedObstacle.y) {
+                            this.enemies[i].y -= overlapY;
+                        } else {
+                            this.enemies[i].y += overlapY;
+                        }
+                    }
+                }
             }
 
             // 죽은 적 제거 (별의 소리 드롭)
