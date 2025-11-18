@@ -35,17 +35,36 @@ class Room {
         };
     }
 
+    // 이웃 방향 설정 (던전 시스템용)
+    setNeighbors(neighborDirections) {
+        // 모든 문 비활성화
+        for (const direction in this.doors) {
+            this.doors[direction].active = false;
+        }
+
+        // 이웃이 있는 방향만 활성화
+        for (const direction of neighborDirections) {
+            if (this.doors[direction]) {
+                this.doors[direction].active = true;
+            }
+        }
+    }
+
     // 모든 문 열기
     openAllDoors() {
         for (const direction in this.doors) {
-            this.doors[direction].open();
+            if (this.doors[direction].active) {
+                this.doors[direction].open();
+            }
         }
     }
 
     // 모든 문 닫기
     closeAllDoors() {
         for (const direction in this.doors) {
-            this.doors[direction].close();
+            if (this.doors[direction].active) {
+                this.doors[direction].close();
+            }
         }
     }
 

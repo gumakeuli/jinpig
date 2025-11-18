@@ -17,9 +17,6 @@ class UI {
         // 체력 하트 그리기
         this.drawHearts(ctx, player.health, player.maxHealth);
 
-        // 점수 표시
-        this.drawScore(ctx, score);
-
         // 조작법 힌트 (게임 하단)
         this.drawControls(ctx);
     }

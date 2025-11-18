@@ -19,6 +19,13 @@ class Game {
         this.room = null;
         this.ui = new UI(this.canvas.width, this.canvas.height);
 
+        // 던전 시스템
+        this.dungeon = null;
+        this.minimap = null;
+        this.currentRoomId = null;
+        this.level = 1;
+        this.maxLevel = 3; // 최대 3스테이지
+
         // 시간 관리
         this.lastTime = 0;
 
@@ -114,8 +121,14 @@ class Game {
         this.enemies = [];
         this.items = [];
 
-        // 시작 방 생성 (적 없음)
-        this.loadRoom(false);
+        // 던전 생성
+        const generator = new DungeonGenerator(this.level);
+        this.dungeon = generator.generate();
+        this.minimap = new Minimap(this.dungeon, this.canvas.width);
+
+        // 시작 방으로 이동
+        this.currentRoomId = this.dungeon.startRoom;
+        this.loadRoomById(this.currentRoomId);
 
         // 시간 초기화
         this.lastTime = performance.now();
@@ -123,18 +136,75 @@ class Game {
         this.clear();
     }
 
+    // 이웃 셀 ID를 방향으로 변환
+    getNeighborDirections(neighbors) {
+        const directions = [];
+        const currentId = this.currentRoomId;
+
+        for (const neighborId of neighbors) {
+            const diff = neighborId - currentId;
+            if (diff === -10) directions.push('top');
+            else if (diff === 10) directions.push('bottom');
+            else if (diff === -1) directions.push('left');
+            else if (diff === 1) directions.push('right');
+        }
+
+        return directions;
+    }
+
+    // ID로 방 로드 (던전 시스템용)
+    loadRoomById(roomId) {
+        const roomData = this.dungeon.rooms.get(roomId);
+        if (!roomData) return;
+
+        // 방 방문 표시
+        roomData.visited = true;
+        this.minimap.setCurrentRoom(roomId);
+
+        // 현재 방 설정
+        this.currentRoomId = roomId;
+
+        // 방 타입에 따라 로드
+        const hasEnemies = roomData.type !== 'start' && roomData.type !== 'shop' && !roomData.cleared;
+        this.loadRoom(hasEnemies, roomData.type, roomData.neighbors);
+    }
+
     // 방 로드 (적 생성 여부 결정)
-    loadRoom(hasEnemies) {
+    loadRoom(hasEnemies, roomType = 'normal', neighbors = []) {
         // 새 방 생성
         this.room = new Room(this.canvas.width, this.canvas.height, hasEnemies);
+
+        // 이웃 정보로 문 설정
+        if (neighbors.length > 0) {
+            const neighborDirections = this.getNeighborDirections(neighbors);
+            this.room.setNeighbors(neighborDirections);
+        }
 
         // 기존 엔티티 제거
         this.projectiles = [];
         this.enemies = [];
         this.items = [];
 
-        // 적이 있는 방이면 적 생성
-        if (hasEnemies) {
+        // 방 타입별 처리
+        if (roomType === 'boss') {
+            // 보스방: 강한 적 생성
+            this.spawnEnemy(400, 200, 'tank');
+            this.spawnEnemy(300, 300, 'tank');
+            this.spawnEnemy(500, 300, 'fast');
+            this.room.closeAllDoors();
+        } else if (roomType === 'treasure') {
+            // 보물방: 아이템만
+            this.spawnItem(300, 250, 'health');
+            this.spawnItem(400, 250, 'damage');
+            this.spawnItem(500, 250, 'speed');
+            this.room.openAllDoors();
+        } else if (roomType === 'shop') {
+            // 상점: 아이템 (나중에 코인 시스템 추가 가능)
+            this.spawnItem(300, 200, 'heal');
+            this.spawnItem(500, 200, 'firerate');
+            this.room.openAllDoors();
+        } else if (hasEnemies) {
+            // 일반 전투 방
             this.spawnEnemy(200, 150, 'basic');
             this.spawnEnemy(600, 150, 'basic');
             this.spawnEnemy(400, 120, 'fast');
@@ -163,32 +233,53 @@ class Game {
     completeRoomTransition() {
         const direction = this.nextRoomDirection;
 
-        // 플레이어 위치를 반대편 문 근처로 이동
-        const centerX = this.canvas.width / 2;
-        const centerY = this.canvas.height / 2;
-        const offset = 80;
-
+        // 다음 방 ID 계산
+        let nextRoomId = this.currentRoomId;
         switch(direction) {
             case 'top':
-                this.player.x = centerX;
-                this.player.y = this.canvas.height - offset;
+                nextRoomId -= 10;
                 break;
             case 'bottom':
-                this.player.x = centerX;
-                this.player.y = offset;
+                nextRoomId += 10;
                 break;
             case 'left':
-                this.player.x = this.canvas.width - offset;
-                this.player.y = centerY;
+                nextRoomId -= 1;
                 break;
             case 'right':
-                this.player.x = offset;
-                this.player.y = centerY;
+                nextRoomId += 1;
                 break;
         }
 
-        // 새로운 방 로드 (적 있음)
-        this.loadRoom(true);
+        // 다음 방이 존재하는지 확인
+        const roomData = this.dungeon.rooms.get(this.currentRoomId);
+        if (roomData && roomData.neighbors.includes(nextRoomId)) {
+            // 플레이어 위치를 반대편 문 근처로 이동
+            const centerX = this.canvas.width / 2;
+            const centerY = this.canvas.height / 2;
+            const offset = 80;
+
+            switch(direction) {
+                case 'top':
+                    this.player.x = centerX;
+                    this.player.y = this.canvas.height - offset;
+                    break;
+                case 'bottom':
+                    this.player.x = centerX;
+                    this.player.y = offset;
+                    break;
+                case 'left':
+                    this.player.x = this.canvas.width - offset;
+                    this.player.y = centerY;
+                    break;
+                case 'right':
+                    this.player.x = offset;
+                    this.player.y = centerY;
+                    break;
+            }
+
+            // 새로운 방 로드
+            this.loadRoomById(nextRoomId);
+        }
 
         // 전환 상태 리셋
         this.isTransitioning = false;
@@ -210,6 +301,58 @@ class Game {
     spawnItem(x, y, type) {
         const item = new Item(x, y, type);
         this.items.push(item);
+    }
+
+    // 보스 클리어 시 호출
+    onBossCleared() {
+        if (this.level >= this.maxLevel) {
+            // 3스테이지 클리어 - 게임 클리어
+            this.onGameComplete();
+        } else {
+            // 다음 스테이지로
+            setTimeout(() => {
+                this.nextStage();
+            }, 2000); // 2초 후 전환
+        }
+    }
+
+    // 다음 스테이지로 이동
+    nextStage() {
+        this.level++;
+
+        // 플레이어 체력 회복 (보너스)
+        if (this.player) {
+            this.player.health = Math.min(this.player.health + 1, this.player.maxHealth);
+        }
+
+        // 새 던전 생성
+        const generator = new DungeonGenerator(this.level);
+        this.dungeon = generator.generate();
+        this.minimap = new Minimap(this.dungeon, this.canvas.width);
+
+        // 시작 방으로 이동
+        this.currentRoomId = this.dungeon.startRoom;
+        this.loadRoomById(this.currentRoomId);
+
+        // 플레이어 위치 초기화
+        this.player.x = this.canvas.width / 2;
+        this.player.y = this.canvas.height / 2;
+    }
+
+    // 게임 클리어
+    onGameComplete() {
+        this.isRunning = false;
+        this.clear();
+        this.drawGameComplete();
+
+        // 3초 후 타이틀로
+        setTimeout(() => {
+            const gameTitle = document.getElementById('gameTitle');
+            if (gameTitle) {
+                gameTitle.style.display = 'flex';
+            }
+            this.reset();
+        }, 3000);
     }
 
     run(currentTime) {
@@ -329,6 +472,19 @@ class Game {
         // 적을 모두 처치하면 문 열기
         if (this.room && this.room.hasEnemies && this.enemies.length === 0) {
             this.room.openAllDoors();
+
+            // 던전 시스템: 방을 cleared로 표시
+            if (this.dungeon && this.currentRoomId !== null) {
+                const roomData = this.dungeon.rooms.get(this.currentRoomId);
+                if (roomData) {
+                    roomData.cleared = true;
+
+                    // 보스방 클리어 시 다음 스테이지로
+                    if (roomData.type === 'boss' && this.currentRoomId === this.dungeon.bossRoom) {
+                        this.onBossCleared();
+                    }
+                }
+            }
         }
 
         // 충돌 감지
@@ -434,6 +590,17 @@ class Game {
         // UI/HUD 그리기
         this.ui.draw(this.ctx, this.player, this.score);
 
+        // 미니맵 그리기
+        if (this.minimap) {
+            this.minimap.draw(this.ctx);
+        }
+
+        // 스테이지 표시 (왼쪽 상단)
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.font = 'bold 20px Arial';
+        this.ctx.textAlign = 'left';
+        this.ctx.fillText(`스테이지 ${this.level}`, 16, 60);
+
         // 방 전환 중이면 어두운 오버레이
         if (this.isTransitioning) {
             const progress = this.transitionTimer / this.transitionDelay;
@@ -476,6 +643,30 @@ class Game {
 
     updateScore(points = 0) {
         this.score += points;
+    }
+
+    drawGameComplete() {
+        // 배경
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // 게임 클리어 텍스트
+        this.ctx.fillStyle = '#00ff00';
+        this.ctx.font = 'bold 64px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('GAME CLEAR!', this.canvas.width / 2, this.canvas.height / 2 - 40);
+
+        // 축하 메시지
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.font = 'bold 32px Arial';
+        this.ctx.fillText('모든 스테이지를 클리어했습니다!', this.canvas.width / 2, this.canvas.height / 2 + 20);
+
+        // 안내
+        this.ctx.font = '20px Arial';
+        this.ctx.fillStyle = '#aaaaaa';
+        this.ctx.fillText('잠시 후 타이틀로 돌아갑니다', this.canvas.width / 2, this.canvas.height / 2 + 80);
+
+        this.ctx.textAlign = 'left';
     }
 
     gameOver() {
