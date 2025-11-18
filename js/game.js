@@ -35,6 +35,13 @@ class Game {
         this.stageTextTimer = 0;
         this.stageTextDuration = 2; // 2초 동안 표시
 
+        // 아이템 획득 표시
+        this.showItemPickup = false;
+        this.itemPickupTimer = 0;
+        this.itemPickupDuration = 3; // 3초 동안 표시
+        this.pickedItemName = '';
+        this.pickedItemDescription = '';
+
         // 시간 관리
         this.lastTime = 0;
 
@@ -234,8 +241,8 @@ class Game {
             const centerX = this.canvas.width / 2;
             const centerY = this.canvas.height / 2;
 
-            // 테스트용 아이템 (나중에 이미지 추가 예정)
-            this.spawnItem(centerX, centerY, 'damage', null);
+            // 릴리스의 바디 아이템 생성
+            this.spawnItem(centerX, centerY, 'lilith_body', 'assets/images/items/1.jpg');
 
             // 모든 문 열기 (장애물 없음)
             this.room.openAllDoors();
@@ -418,6 +425,14 @@ class Game {
             this.stageTextTimer += deltaTime;
             if (this.stageTextTimer >= this.stageTextDuration) {
                 this.showStageText = false;
+            }
+        }
+
+        // 아이템 획득 표시 타이머 업데이트
+        if (this.showItemPickup) {
+            this.itemPickupTimer += deltaTime;
+            if (this.itemPickupTimer >= this.itemPickupDuration) {
+                this.showItemPickup = false;
             }
         }
 
@@ -697,6 +712,12 @@ class Game {
             const itemBounds = item.getBounds();
 
             if (checkCollision(playerBounds, itemBounds)) {
+                // 아이템 정보 저장 (화면 표시용)
+                this.pickedItemName = item.name;
+                this.pickedItemDescription = item.description;
+                this.showItemPickup = true;
+                this.itemPickupTimer = 0;
+
                 // 아이템 효과 적용
                 item.apply(this.player);
                 this.updateScore(5); // 아이템 획득 점수
@@ -779,6 +800,29 @@ class Game {
             this.ctx.font = 'bold 72px Arial';
             this.ctx.textAlign = 'center';
             this.ctx.fillText(`STAGE ${this.level}`, this.canvas.width / 2, this.canvas.height / 2);
+            this.ctx.textAlign = 'left';
+        }
+
+        // 아이템 획득 표시
+        if (this.showItemPickup) {
+            // 반투명 배경
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+            // 아이템 이름 (큰 글씨)
+            this.ctx.fillStyle = '#ffdd00';
+            this.ctx.font = 'bold 64px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.shadowBlur = 10;
+            this.ctx.shadowColor = '#ffdd00';
+            this.ctx.fillText(this.pickedItemName, this.canvas.width / 2, this.canvas.height / 2 - 30);
+            this.ctx.shadowBlur = 0;
+
+            // 아이템 설명 (작은 글씨)
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.font = '28px Arial';
+            this.ctx.fillText(this.pickedItemDescription, this.canvas.width / 2, this.canvas.height / 2 + 40);
+
             this.ctx.textAlign = 'left';
         }
 

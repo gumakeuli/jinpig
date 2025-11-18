@@ -19,10 +19,14 @@ class Item {
         // 아이템 이미지
         this.itemImage = null;
         this.itemLoaded = false;
+        this.processedItemCanvas = null; // 크로마키 처리된 이미지를 저장할 캔버스
+
         if (imagePath) {
             this.itemImage = new Image();
             this.itemImage.src = imagePath;
             this.itemImage.onload = () => {
+                // 크로마키 처리 (초록색 제거)
+                this.applyChromaKey();
                 this.itemLoaded = true;
             };
         }
@@ -38,6 +42,24 @@ class Item {
 
     setupType() {
         switch(this.type) {
+            case 'lilith_body':
+                this.name = '릴리스의 바디';
+                this.description = '갓데스 스쿼드를 위하여';
+                this.color = '#ff0066';
+                this.effect = (player) => {
+                    // 체력 +1
+                    player.maxHealth = Math.min(player.maxHealth + 1, player.maxHealthCap);
+                    player.health = Math.min(player.health + 1, player.maxHealth);
+
+                    // 공격력 +1
+                    player.damage = Math.min(player.damage + 1, player.damageCap);
+
+                    // 공격속도 +1
+                    player.attackSpeed = Math.min(player.attackSpeed + 1, player.attackSpeedCap);
+                    player.updateFireRate();
+                };
+                break;
+
             case 'health':
                 this.name = '체력 증가';
                 this.description = '최대 체력 +2';
@@ -84,6 +106,44 @@ class Item {
                 };
                 break;
         }
+    }
+
+    // 크로마키 처리 (초록색 제거)
+    applyChromaKey() {
+        if (!this.itemImage) return;
+
+        // 임시 캔버스 생성
+        const tempCanvas = document.createElement('canvas');
+        const tempCtx = tempCanvas.getContext('2d');
+
+        tempCanvas.width = this.itemImage.width;
+        tempCanvas.height = this.itemImage.height;
+
+        // 이미지를 캔버스에 그리기
+        tempCtx.drawImage(this.itemImage, 0, 0);
+
+        // 픽셀 데이터 가져오기
+        const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+        const data = imageData.data;
+
+        // 초록색 픽셀을 투명하게 만들기
+        for (let i = 0; i < data.length; i += 4) {
+            const r = data[i];
+            const g = data[i + 1];
+            const b = data[i + 2];
+
+            // 초록색 감지 (G값이 R과 B보다 충분히 높은 경우)
+            // 임계값: G > 100 && G > R + 50 && G > B + 50
+            if (g > 100 && g > r + 50 && g > b + 50) {
+                data[i + 3] = 0; // 알파값을 0으로 (투명)
+            }
+        }
+
+        // 수정된 픽셀 데이터를 다시 캔버스에 적용
+        tempCtx.putImageData(imageData, 0, 0);
+
+        // 처리된 캔버스 저장
+        this.processedItemCanvas = tempCanvas;
     }
 
     // 업데이트
