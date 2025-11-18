@@ -30,9 +30,17 @@ class Player {
         this.vy = 0;
 
         // 스탯
-        this.maxHealth = 6;
-        this.health = 6;
-        this.damage = 1;
+        this.health = 3;
+        this.maxHealth = 3; // 최대 체력 (최대 7)
+        this.damage = 1; // 공격력 (최대 5)
+        this.attackSpeed = 1; // 공격속도 (최대 5)
+        this.luck = 1; // 행운 (최대 5)
+
+        // 스탯 상한선
+        this.maxHealthCap = 7;
+        this.damageCap = 5;
+        this.attackSpeedCap = 5;
+        this.luckCap = 5;
 
         // 입력 상태
         this.keys = {
@@ -49,8 +57,10 @@ class Player {
         };
 
         // 발사 관련
-        this.fireRate = 250; // ms
         this.lastFireTime = 0;
+
+        // 공격속도에 따른 발사 간격 계산
+        this.updateFireRate();
 
         // 무적 시간
         this.invincible = false;
@@ -218,11 +228,37 @@ class Player {
     takeDamage(amount) {
         if (this.invincible) return false;
 
+        // 행운에 따른 회피 확률 체크
+        const dodgeChance = this.luck; // 행운 1당 1%
+        const randomValue = Math.random() * 100; // 0~100
+
+        if (randomValue < dodgeChance) {
+            // 회피 성공!
+            return false;
+        }
+
         this.health -= amount;
         this.invincible = true;
         this.invincibleTime = 0;
 
         return true;
+    }
+
+    // 공격속도에 따른 발사 간격 계산
+    updateFireRate() {
+        // 공격속도 1 = 0.8초 (800ms)
+        // 공격속도가 1 증가할 때마다 0.05초(50ms)씩 감소
+        // 공격속도 1: 800ms
+        // 공격속도 2: 750ms
+        // 공격속도 3: 700ms
+        // 공격속도 4: 650ms
+        // 공격속도 5: 600ms
+        const baseFireRate = 800; // 0.8초
+        const rateDecrease = 50; // 0.05초
+        const calculatedRate = baseFireRate - (this.attackSpeed - 1) * rateDecrease;
+
+        // 최소 발사 간격 50ms
+        this.fireRate = Math.max(50, calculatedRate);
     }
 
     // 발사 가능 여부

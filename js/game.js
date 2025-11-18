@@ -324,8 +324,13 @@ class Game {
     nextStage() {
         this.level++;
 
-        // 플레이어 체력 회복 (보너스)
+        // 플레이어 체력 회복 및 최대 체력 증가 (보너스)
         if (this.player) {
+            // 최대 체력 증가 (7까지)
+            if (this.player.maxHealth < this.player.maxHealthCap) {
+                this.player.maxHealth++;
+            }
+            // 체력 회복
             this.player.health = Math.min(this.player.health + 1, this.player.maxHealth);
         }
 

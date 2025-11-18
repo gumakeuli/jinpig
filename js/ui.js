@@ -17,6 +17,9 @@ class UI {
         // 체력 하트 그리기
         this.drawHearts(ctx, player.health, player.maxHealth);
 
+        // 스탯 정보 그리기
+        this.drawStats(ctx, player);
+
         // 조작법 힌트 (게임 하단)
         this.drawControls(ctx);
     }
@@ -95,6 +98,25 @@ class UI {
         ctx.lineTo(x + size, y + halfSize / 2);
         ctx.closePath();
         ctx.stroke();
+    }
+
+    // 스탯 정보 표시
+    drawStats(ctx, player) {
+        const x = this.heartPadding;
+        const y = this.heartPadding + 40; // 하트 아래
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 16px Arial';
+        ctx.textAlign = 'left';
+
+        // 공격력
+        ctx.fillText(`⚔️ 공격력: ${player.damage}/${5}`, x, y);
+
+        // 공격속도
+        ctx.fillText(`⏱️ 공격속도: ${player.attackSpeed}/${5}`, x, y + 22);
+
+        // 행운
+        ctx.fillText(`🍀 행운: ${player.luck}/${5} (회피 ${player.luck}%)`, x, y + 44);
     }
 
     // 점수 표시
