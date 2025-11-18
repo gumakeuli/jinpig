@@ -326,6 +326,11 @@ class Game {
             }
         }
 
+        // 적을 모두 처치하면 문 열기
+        if (this.room && this.room.hasEnemies && this.enemies.length === 0) {
+            this.room.openAllDoors();
+        }
+
         // 충돌 감지
         this.checkCollisions();
 
