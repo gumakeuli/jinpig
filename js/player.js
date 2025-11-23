@@ -7,22 +7,41 @@ class Player {
         this.height = 64;
 
         // 캐릭터 이미지 로드
-        this.imageIdle = new Image();
-        this.imageIdle.src = 'assets/images/2.jpg';
-        this.imageShoot = new Image();
-        this.imageShoot.src = 'assets/images/3.png';
+        this.images = {};
+        this.loadedImagesCount = 0;
+        this.totalImages = 0;
 
-        this.imageLoaded = false;
-        this.currentImage = this.imageIdle;
-
-        this.imageIdle.onload = () => {
-            this.imageLoaded = true;
+        const imageSources = {
+            // 이동 (WASD)
+            'w': 'assets/images/2.jpg',
+            'a': 'assets/images/9.jpg',
+            's': 'assets/images/10.jpg',
+            'd': 'assets/images/11.jpg',
+            // 공격 (방향키)
+            'up': 'assets/images/13.png',
+            'down': 'assets/images/3.png',
+            'left': 'assets/images/12.png',
+            'right': 'assets/images/14.png'
         };
+
+        this.totalImages = Object.keys(imageSources).length;
+
+        for (const key in imageSources) {
+            this.images[key] = new Image();
+            this.images[key].src = imageSources[key];
+            this.images[key].onload = () => {
+                this.loadedImagesCount++;
+            };
+        }
+
+        this.currentImage = this.images['s']; // 기본 이미지 (S - 10번)
 
         // 발사 상태
         this.isShooting = false;
         this.shootAnimTime = 0;
         this.shootAnimDuration = 0.2; // 0.2초 동안 발사 이미지 표시
+        this.shootingDirection = null; // 발사 방향
+        this.lastDirection = 's'; // 마지막 바라본 방향
 
         // 이동 관련
         this.speed = 200; // 픽셀/초
@@ -66,11 +85,18 @@ class Player {
         this.invincible = false;
         this.invincibleTime = 0;
         this.invincibleDuration = 1000; // 1초
+
+        // 사용 아이템
+        this.activeItem = null; // 'slash' 등
+        this.itemCooldown = 0;
+        this.itemMaxCooldown = 1; // 1초 쿨다운
+
+        this.keys.space = false;
     }
 
     // 입력 처리
     handleKeyDown(key) {
-        switch(key) {
+        switch (key) {
             // 이동 - WASD
             case 'w':
             case 'W':
@@ -101,11 +127,16 @@ class Player {
             case 'ArrowRight':
                 this.keys.arrowRight = true;
                 break;
+            // 사용 아이템 - Space
+            case ' ':
+            case 'Spacebar':
+                this.keys.space = true;
+                break;
         }
     }
 
     handleKeyUp(key) {
-        switch(key) {
+        switch (key) {
             // 이동 - WASD
             case 'w':
             case 'W':
@@ -135,6 +166,11 @@ class Player {
                 break;
             case 'ArrowRight':
                 this.keys.arrowRight = false;
+                break;
+            // 사용 아이템 - Space
+            case ' ':
+            case 'Spacebar':
+                this.keys.space = false;
                 break;
         }
     }
@@ -178,14 +214,60 @@ class Player {
             }
         }
 
-        // 발사 애니메이션 업데이트
+        // 발사 애니메이션 타이머
         if (this.isShooting) {
             this.shootAnimTime += deltaTime;
             if (this.shootAnimTime >= this.shootAnimDuration) {
                 this.isShooting = false;
-                this.shootAnimTime = 0;
-                this.currentImage = this.imageIdle;
+                this.shootingDirection = null;
             }
+        }
+
+        // 이미지 업데이트 로직
+        this.updateSprite();
+
+        // 아이템 쿨다운 업데이트
+        if (this.itemCooldown > 0) {
+            this.itemCooldown -= deltaTime;
+        }
+    }
+
+    // 스프라이트 업데이트
+    updateSprite() {
+        // 우선순위 1: 발사 중일 때 (startShootAnimation에 의해 설정됨)
+        if (this.isShooting && this.shootingDirection) {
+            this.currentImage = this.images[this.shootingDirection];
+            this.lastDirection = this.shootingDirection;
+            return;
+        }
+
+        // 우선순위 2: 이동 (WASD)
+        if (this.keys.w) {
+            this.currentImage = this.images['w'];
+            this.lastDirection = 'w';
+            return;
+        }
+        if (this.keys.s) {
+            this.currentImage = this.images['s'];
+            this.lastDirection = 's';
+            return;
+        }
+        if (this.keys.a) {
+            this.currentImage = this.images['a'];
+            this.lastDirection = 'a';
+            return;
+        }
+        if (this.keys.d) {
+            this.currentImage = this.images['d'];
+            this.lastDirection = 'd';
+            return;
+        }
+
+        // 우선순위 3: 대기 (마지막 방향 유지 또는 기본값)
+        if (this.lastDirection && this.images[this.lastDirection]) {
+            this.currentImage = this.images[this.lastDirection];
+        } else {
+            this.currentImage = this.images['s']; // 기본값
         }
     }
 
@@ -197,7 +279,8 @@ class Player {
         }
 
         // 이미지가 로드되었으면 이미지로, 아니면 사각형으로
-        if (this.imageLoaded) {
+        // 이미지가 하나라도 로드되었고 현재 이미지가 유효하면 그리기
+        if (this.currentImage && this.currentImage.complete && this.currentImage.naturalWidth > 0) {
             ctx.drawImage(
                 this.currentImage,
                 this.x - this.width / 2,
@@ -206,9 +289,19 @@ class Player {
                 this.height
             );
         } else {
-            // 로딩 중에는 녹색 사각형
+            // 로딩 중이거나 이미지 실패 시 녹색 사각형
             ctx.fillStyle = '#00ff00';
             ctx.fillRect(
+                this.x - this.width / 2,
+                this.y - this.height / 2,
+                this.width,
+                this.height
+            );
+
+            // 디버깅용 테두리
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(
                 this.x - this.width / 2,
                 this.y - this.height / 2,
                 this.width,
@@ -218,10 +311,13 @@ class Player {
     }
 
     // 발사 애니메이션 시작
-    startShootAnimation() {
+    startShootAnimation(direction) {
         this.isShooting = true;
         this.shootAnimTime = 0;
-        this.currentImage = this.imageShoot;
+        this.shootingDirection = direction;
+
+        // 즉시 이미지 업데이트
+        this.updateSprite();
     }
 
     // 데미지 받기

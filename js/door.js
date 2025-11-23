@@ -12,6 +12,7 @@ class Door {
         this.active = true; // 문이 활성화되어 있는지
         this.isOpen = false; // 문이 열려있는지 (처음엔 닫혀있음)
         this.isTreasureDoor = false; // 보물방 문인지
+        this.isShopDoor = false; // 상점 문인지
 
         // 애니메이션 타이머
         this.animTimer = Math.random() * Math.PI * 2;
@@ -34,7 +35,7 @@ class Door {
         const centerX = this.canvasWidth / 2;
         const centerY = this.canvasHeight / 2;
 
-        switch(this.direction) {
+        switch (this.direction) {
             case 'top':
                 this.x = centerX - this.doorWidth / 2;
                 this.y = 0;
@@ -127,6 +128,38 @@ class Door {
             radialGradient.addColorStop(0, `rgba(255, 255, 255, ${0.4 + pulseIntensity * 0.2})`);
             radialGradient.addColorStop(0.5, `rgba(0, 255, 255, ${0.2 + pulseIntensity * 0.1})`);
             radialGradient.addColorStop(1, 'rgba(0, 255, 255, 0)');
+            ctx.fillStyle = radialGradient;
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+
+        } else if (this.isShopDoor) {
+            // 상점 문 (황금색)
+            const pulseIntensity = (Math.sin(this.animTimer * 1.5) + 1) / 2;
+
+            // 기본 베이스 (어두운 금색)
+            ctx.fillStyle = '#8B6508';
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+
+            // 빛나는 그라디언트
+            const gradient = ctx.createLinearGradient(this.x, this.y, this.x + this.width, this.y + this.height);
+            gradient.addColorStop(0, `rgba(255, 215, 0, ${0.4 + pulseIntensity * 0.3})`);
+            gradient.addColorStop(0.5, `rgba(255, 255, 0, ${0.6 + pulseIntensity * 0.2})`);
+            gradient.addColorStop(1, `rgba(255, 215, 0, ${0.4 + pulseIntensity * 0.3})`);
+            ctx.fillStyle = gradient;
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+
+            // 외곽 글로우
+            ctx.shadowBlur = 15 + pulseIntensity * 10;
+            ctx.shadowColor = '#FFD700';
+            ctx.strokeStyle = `rgba(255, 215, 0, ${0.9 + pulseIntensity * 0.1})`;
+            ctx.lineWidth = 3;
+            ctx.strokeRect(this.x, this.y, this.width, this.height);
+            ctx.shadowBlur = 0;
+
+            // 중앙 빛 효과
+            const radialGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, Math.max(this.width, this.height) / 2);
+            radialGradient.addColorStop(0, `rgba(255, 255, 255, ${0.5 + pulseIntensity * 0.2})`);
+            radialGradient.addColorStop(0.5, `rgba(255, 215, 0, ${0.3 + pulseIntensity * 0.1})`);
+            radialGradient.addColorStop(1, 'rgba(255, 215, 0, 0)');
             ctx.fillStyle = radialGradient;
             ctx.fillRect(this.x, this.y, this.width, this.height);
 

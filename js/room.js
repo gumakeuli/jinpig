@@ -26,6 +26,20 @@ class Room {
 
         // 장애물 목록
         this.obstacles = [];
+
+        // 상점 주인
+        this.shopkeeperImage = new Image();
+        this.shopkeeperImage.src = 'assets/images/15.jpg';
+        this.shopkeeperLoaded = false;
+        this.shopkeeperImage.onload = () => {
+            this.shopkeeperLoaded = true;
+        };
+
+        // 말풍선 타이머
+        this.speechTimer = 0;
+        this.speechDuration = 5; // 5초 표시
+        this.speechCooldown = 3; // 3초 숨김
+        this.isSpeechVisible = true;
     }
 
     // 4방향 문 생성
@@ -57,6 +71,13 @@ class Room {
     setTreasureDoor(direction) {
         if (this.doors[direction]) {
             this.doors[direction].isTreasureDoor = true;
+        }
+    }
+
+    // 상점 문으로 설정
+    setShopDoor(direction) {
+        if (this.doors[direction]) {
+            this.doors[direction].isShopDoor = true;
         }
     }
 
@@ -150,9 +171,9 @@ class Room {
 
         // 경계 제한
         entity.x = Math.max(this.bounds.left + halfWidth,
-                           Math.min(this.bounds.right - halfWidth, entity.x));
+            Math.min(this.bounds.right - halfWidth, entity.x));
         entity.y = Math.max(this.bounds.top + halfHeight,
-                           Math.min(this.bounds.bottom - halfHeight, entity.y));
+            Math.min(this.bounds.bottom - halfHeight, entity.y));
     }
 
     // 발사체가 벽과 충돌하는지 확인
@@ -193,6 +214,32 @@ class Room {
             // 벽 베이스
             ctx.fillStyle = '#666';
             ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
+
+            // 벽돌 패턴 그리기
+            ctx.strokeStyle = '#555';
+            ctx.lineWidth = 2;
+
+            const brickWidth = 40;
+            const brickHeight = 20;
+
+            // 가로선
+            for (let y = wall.y; y < wall.y + wall.height; y += brickHeight) {
+                ctx.beginPath();
+                ctx.moveTo(wall.x, y);
+                ctx.lineTo(wall.x + wall.width, y);
+                ctx.stroke();
+            }
+
+            // 세로선 (벽돌처럼 엇갈리게)
+            for (let y = wall.y; y < wall.y + wall.height; y += brickHeight) {
+                const offset = (y / brickHeight) % 2 === 0 ? 0 : brickWidth / 2;
+                for (let x = wall.x + offset; x < wall.x + wall.width; x += brickWidth) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+                    ctx.lineTo(x, y + brickHeight);
+                    ctx.stroke();
+                }
+            }
 
             // 벽 테두리 (입체감)
             ctx.strokeStyle = '#888';
@@ -352,6 +399,73 @@ class Room {
         }
 
         return null;
+    }
+
+    // 상점 주인 그리기
+    drawShopkeeper(ctx, deltaTime) {
+        const centerX = this.canvasWidth / 2;
+        const centerY = this.canvasHeight / 2;
+        const size = 100;
+
+        // 상점 주인 이미지
+        if (this.shopkeeperLoaded) {
+            ctx.drawImage(
+                this.shopkeeperImage,
+                centerX - size / 2,
+                centerY - size / 2,
+                size,
+                size
+            );
+        } else {
+            // 로딩 중이면 대체 사각형
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(centerX - size / 2, centerY - size / 2, size, size);
+        }
+
+        // 말풍선 로직
+        this.speechTimer += deltaTime;
+        if (this.isSpeechVisible) {
+            if (this.speechTimer >= this.speechDuration) {
+                this.isSpeechVisible = false;
+                this.speechTimer = 0;
+            }
+        } else {
+            if (this.speechTimer >= this.speechCooldown) {
+                this.isSpeechVisible = true;
+                this.speechTimer = 0;
+            }
+        }
+
+        // 말풍선 그리기
+        if (this.isSpeechVisible) {
+            const bubbleX = centerX;
+            const bubbleY = centerY - size / 2 - 20;
+            const text = "아 임딱같네";
+
+            ctx.font = 'bold 20px Arial';
+            const textMetrics = ctx.measureText(text);
+            const bubbleWidth = textMetrics.width + 40;
+            const bubbleHeight = 50;
+
+            // 말풍선 배경
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.roundRect(bubbleX - bubbleWidth / 2, bubbleY - bubbleHeight, bubbleWidth, bubbleHeight, 10);
+            ctx.fill();
+
+            // 말풍선 꼬리
+            ctx.beginPath();
+            ctx.moveTo(bubbleX, bubbleY);
+            ctx.lineTo(bubbleX - 10, bubbleY - 10);
+            ctx.lineTo(bubbleX + 10, bubbleY - 10);
+            ctx.fill();
+
+            // 텍스트
+            ctx.fillStyle = 'black';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, bubbleX, bubbleY - bubbleHeight / 2);
+        }
     }
 
     // 장애물과 발사체 충돌 체크

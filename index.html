@@ -1,26 +1,31 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>웨이브즈작</title>
     <link rel="stylesheet" href="css/style.css">
     <style>
-        body, html {
+        body,
+        html {
             margin: 0;
             padding: 0;
             overflow: hidden;
         }
+
         .container {
             position: relative;
             width: 100%;
             height: 100vh;
         }
+
         #game-area {
             position: relative;
             width: 100%;
             height: 100%;
         }
+
         #gameCanvas {
             position: absolute;
             top: 0;
@@ -28,6 +33,7 @@
             width: 100%;
             height: 100%;
         }
+
         .game-title {
             position: absolute;
             top: 0;
@@ -37,68 +43,125 @@
             text-align: center;
             z-index: 10;
             pointer-events: none;
-            background-image: url('assets/images/1.png');
-            background-size: 100% 100%;
-            background-position: center;
-            background-repeat: no-repeat;
+            background: radial-gradient(circle at center, #2b1055 0%, #7597de 100%);
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
+            overflow: hidden;
         }
-        .game-title h1 {
-            font-size: 96px;
-            color: #ffffff;
-            text-shadow: 6px 6px 12px rgba(0, 0, 0, 1), 0 0 20px rgba(102, 126, 234, 0.5);
-            margin-bottom: 80px;
-            font-family: 'Arial Black', sans-serif;
-            letter-spacing: 4px;
-            animation: titlePulse 2s ease-in-out infinite;
+
+        /* 배경 별 효과 */
+        .game-title::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                radial-gradient(white, rgba(255, 255, 255, .2) 2px, transparent 3px),
+                radial-gradient(white, rgba(255, 255, 255, .15) 1px, transparent 2px),
+                radial-gradient(white, rgba(255, 255, 255, .1) 2px, transparent 3px);
+            background-size: 550px 550px, 350px 350px, 250px 250px;
+            background-position: 0 0, 40px 60px, 130px 270px;
+            animation: stars 60s linear infinite;
+            z-index: -1;
         }
-        @keyframes titlePulse {
-            0%, 100% {
-                transform: scale(1);
-                text-shadow: 6px 6px 12px rgba(0, 0, 0, 1), 0 0 20px rgba(102, 126, 234, 0.5);
-            }
-            50% {
-                transform: scale(1.02);
-                text-shadow: 6px 6px 12px rgba(0, 0, 0, 1), 0 0 30px rgba(102, 126, 234, 0.8);
-            }
-        }
-        .game-title button {
-            pointer-events: auto;
-            font-size: 36px;
-            padding: 24px 70px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: 3px solid rgba(255, 255, 255, 0.3);
-            border-radius: 15px;
-            cursor: pointer;
-            font-weight: bold;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6), 0 0 30px rgba(102, 126, 234, 0.3);
-            letter-spacing: 3px;
-            transition: all 0.3s ease;
-            animation: buttonFloat 3s ease-in-out infinite;
-        }
-        @keyframes buttonFloat {
-            0%, 100% {
+
+        @keyframes stars {
+            from {
                 transform: translateY(0);
             }
-            50% {
-                transform: translateY(-10px);
+
+            to {
+                transform: translateY(-1000px);
             }
         }
-        .game-title button:hover {
-            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
-            transform: translateY(-5px) scale(1.05);
-            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.8), 0 0 50px rgba(102, 126, 234, 0.6);
-            border-color: rgba(255, 255, 255, 0.6);
+
+        .game-title h1 {
+            font-size: 120px;
+            color: #fff;
+            text-transform: uppercase;
+            text-shadow:
+                0 0 10px #fff,
+                0 0 20px #fff,
+                0 0 40px #0fa,
+                0 0 80px #0fa,
+                0 0 120px #0fa;
+            margin-bottom: 60px;
+            font-family: 'Arial Black', sans-serif;
+            letter-spacing: 10px;
+            animation: neon 1.5s ease-in-out infinite alternate;
         }
+
+        @keyframes neon {
+            from {
+                text-shadow:
+                    0 0 10px #fff,
+                    0 0 20px #fff,
+                    0 0 40px #0fa,
+                    0 0 80px #0fa,
+                    0 0 120px #0fa;
+            }
+
+            to {
+                text-shadow:
+                    0 0 5px #fff,
+                    0 0 10px #fff,
+                    0 0 20px #0fa,
+                    0 0 40px #0fa,
+                    0 0 60px #0fa;
+            }
+        }
+
+        .game-title button {
+            pointer-events: auto;
+            font-size: 32px;
+            padding: 20px 60px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #0fa;
+            border: 2px solid #0fa;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            letter-spacing: 5px;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+            box-shadow: 0 0 15px rgba(0, 255, 170, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .game-title button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+            transition: 0.5s;
+        }
+
+        .game-title button:hover {
+            background: #0fa;
+            color: #000;
+            box-shadow: 0 0 30px #0fa;
+            transform: scale(1.1);
+        }
+
+        .game-title button:hover::before {
+            left: 100%;
+        }
+
         .game-title button:active {
-            transform: translateY(-2px) scale(1.02);
+            transform: scale(0.95);
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <div id="game-area">
@@ -117,12 +180,14 @@
     <script src="js/room.js"></script>
     <script src="js/dungeon.js"></script>
     <script src="js/minimap.js"></script>
-    <script src="js/player.js"></script>
     <script src="js/projectile.js"></script>
+    <script src="js/slash.js"></script>
     <script src="js/enemy.js"></script>
     <script src="js/item.js"></script>
     <script src="js/star.js"></script>
+    <script src="js/player.js"></script>
     <script src="js/game.js"></script>
     <script src="js/main.js"></script>
 </body>
+
 </html>

@@ -15,7 +15,9 @@ class Game {
         this.player = null;
         this.projectiles = [];
         this.enemies = [];
+        this.enemies = [];
         this.items = [];
+        this.activeItems = []; // 활성화된 사용 아이템 (베기 등)
         this.stars = []; // 별의 소리
         this.room = null;
         this.ui = new UI(this.canvas.width, this.canvas.height);
@@ -142,6 +144,9 @@ class Game {
         this.enemies = [];
         this.items = [];
 
+        // 방 상태 저장소 (방 ID -> { room, enemies, items, projectiles })
+        this.roomStates = new Map();
+
         // 던전 생성
         const generator = new DungeonGenerator(this.level);
         this.dungeon = generator.generate();
@@ -187,6 +192,17 @@ class Game {
 
     // ID로 방 로드 (던전 시스템용)
     loadRoomById(roomId) {
+        // 현재 방 상태 저장
+        if (this.room && this.currentRoomId !== null) {
+            this.roomStates.set(this.currentRoomId, {
+                room: this.room,
+                enemies: this.enemies,
+                items: this.items,
+                // 투사체는 저장하지 않음 (방 이동 시 제거)
+                visited: true
+            });
+        }
+
         const roomData = this.dungeon.rooms.get(roomId);
         if (!roomData) return;
 
@@ -194,12 +210,23 @@ class Game {
         roomData.visited = true;
         this.minimap.setCurrentRoom(roomId);
 
-        // 현재 방 설정
+        // 현재 방 ID 업데이트
         this.currentRoomId = roomId;
 
-        // 방 타입에 따라 로드
-        const hasEnemies = roomData.type !== 'start' && roomData.type !== 'shop' && !roomData.cleared;
-        this.loadRoom(hasEnemies, roomData.type, roomData.neighbors);
+        // 저장된 상태가 있는지 확인
+        if (this.roomStates.has(roomId)) {
+            // 상태 복원
+            const state = this.roomStates.get(roomId);
+            this.room = state.room;
+            this.enemies = state.enemies;
+            this.items = state.items;
+            this.projectiles = []; // 투사체 초기화
+        } else {
+            // 새로운 방 로드
+            // 방 타입에 따라 로드
+            const hasEnemies = roomData.type !== 'start' && roomData.type !== 'shop' && !roomData.cleared;
+            this.loadRoom(hasEnemies, roomData.type, roomData.neighbors);
+        }
     }
 
     // 방 로드 (적 생성 여부 결정)
@@ -212,13 +239,24 @@ class Game {
             const neighborDirections = this.getNeighborDirections(neighbors);
             this.room.setNeighbors(neighborDirections);
 
-            // 이웃 중에 보물방이 있으면 해당 방향 문을 보물방 문으로 설정
+            // 이웃 중에 보물방이나 상점이 있으면 해당 방향 문을 특별 문으로 설정
             for (const neighborId of neighbors) {
                 const neighborData = this.dungeon.rooms.get(neighborId);
-                if (neighborData && neighborData.type === 'treasure') {
-                    const directionToTreasure = this.getDirectionBetween(this.currentRoomId, neighborId);
-                    if (directionToTreasure) {
-                        this.room.setTreasureDoor(directionToTreasure);
+                if (neighborData) {
+                    // 보물방 문 설정
+                    if (neighborData.type === 'treasure') {
+                        const directionToTreasure = this.getDirectionBetween(this.currentRoomId, neighborId);
+                        if (directionToTreasure) {
+                            this.room.setTreasureDoor(directionToTreasure);
+                        }
+                    }
+
+                    // 상점 문 설정
+                    if (neighborData.type === 'shop') {
+                        const directionToShop = this.getDirectionBetween(this.currentRoomId, neighborId);
+                        if (directionToShop) {
+                            this.room.setShopDoor(directionToShop);
+                        }
                     }
                 }
             }
@@ -241,8 +279,17 @@ class Game {
             const centerX = this.canvas.width / 2;
             const centerY = this.canvas.height / 2;
 
-            // 릴리스의 바디 아이템 생성
-            this.spawnItem(centerX, centerY, 'lilith_body', 'assets/images/items/1.jpg');
+            // 아이템 목록
+            const items = [
+                { type: 'lilith_body', image: 'assets/images/items/1.png' },
+                { type: 'mystery_item', image: 'assets/images/items/3.png' }
+            ];
+
+            // 랜덤 선택
+            const randomItem = items[Math.floor(Math.random() * items.length)];
+
+            // 아이템 생성 (캐시 방지를 위한 타임스탬프 추가)
+            this.spawnItem(centerX, centerY, randomItem.type, `${randomItem.image}?t=${Date.now()}`);
 
             // 모든 문 열기 (장애물 없음)
             this.room.openAllDoors();
@@ -282,7 +329,7 @@ class Game {
 
         // 다음 방 ID 계산
         let nextRoomId = this.currentRoomId;
-        switch(direction) {
+        switch (direction) {
             case 'top':
                 nextRoomId -= 10;
                 break;
@@ -305,7 +352,7 @@ class Game {
             const centerY = this.canvas.height / 2;
             const offset = 80;
 
-            switch(direction) {
+            switch (direction) {
                 case 'top':
                     this.player.x = centerX;
                     this.player.y = this.canvas.height - offset;
@@ -522,7 +569,43 @@ class Game {
                     );
                     this.projectiles.push(projectile);
                     this.player.fire(currentTime);
-                    this.player.startShootAnimation(); // 발사 애니메이션 시작
+
+                    // 발사 방향 문자열 결정
+                    let shootDirStr = 's'; // 기본값
+                    if (dir.y < 0) shootDirStr = 'up';
+                    else if (dir.y > 0) shootDirStr = 'down';
+                    else if (dir.x < 0) shootDirStr = 'left';
+                    else if (dir.x > 0) shootDirStr = 'right';
+
+                    this.player.startShootAnimation(shootDirStr); // 발사 애니메이션 시작
+                }
+            }
+
+            // 사용 아이템 (베기)
+            if (this.player.keys.space && this.player.canUseItem()) {
+                if (this.player.activeItem === 'slash') {
+                    // 마지막 바라본 방향으로 베기
+                    let direction = this.player.lastDirection;
+                    // WASD 키를 방향 문자열로 변환
+                    if (direction === 'w') direction = 'up';
+                    else if (direction === 's') direction = 'down';
+                    else if (direction === 'a') direction = 'left';
+                    else if (direction === 'd') direction = 'right';
+
+                    // 기본값 처리
+                    if (!['up', 'down', 'left', 'right'].includes(direction)) {
+                        direction = 'right';
+                    }
+
+                    const slash = new Slash(
+                        this.player.x,
+                        this.player.y,
+                        direction,
+                        this.player.damage * 2 // 베기는 기본 공격력의 2배
+                    );
+                    this.activeItems.push(slash);
+                    this.player.useItem();
+                    console.log('베기 공격 사용!');
                 }
             }
         }
@@ -544,6 +627,17 @@ class Game {
             // 비활성화된 발사체 제거
             if (!this.projectiles[i].active) {
                 this.projectiles.splice(i, 1);
+            }
+        }
+
+        // 사용 아이템 업데이트 (베기)
+        for (let i = this.activeItems.length - 1; i >= 0; i--) {
+            if (this.player) {
+                this.activeItems[i].update(deltaTime, this.player.x, this.player.y);
+            }
+
+            if (!this.activeItems[i].active) {
+                this.activeItems.splice(i, 1);
             }
         }
 
@@ -686,6 +780,43 @@ class Game {
             }
         }
 
+        // 사용 아이템(베기) vs 적 충돌
+        for (const item of this.activeItems) {
+            if (item instanceof Slash && item.active) {
+                for (let j = this.enemies.length - 1; j >= 0; j--) {
+                    const enemy = this.enemies[j];
+
+                    // 이미 타격한 적은 제외해야 하지만, 
+                    // 현재 구조상 매 프레임 체크하므로 넉백이나 무적시간으로 처리 필요
+                    // 간단하게 적에게 무적 시간을 주거나, Slash 객체에 타격한 적 리스트를 관리해야 함.
+                    // 여기서는 Slash가 지속되는 동안 계속 데미지를 주지 않도록
+                    // 적에게 짧은 무적 시간을 부여하는 방식을 사용하는 것이 좋음 (Player.takeDamage처럼)
+                    // 하지만 Enemy 클래스에 무적 로직이 없으므로, 
+                    // Slash 객체에 'hitEnemies' 리스트를 추가하는 것이 안전함.
+
+                    if (!item.hitEnemies) item.hitEnemies = [];
+
+                    if (item.hitEnemies.includes(enemy)) continue;
+
+                    if (item.checkCollision(enemy)) {
+                        // 적이 데미지를 받음
+                        enemy.takeDamage(item.damage);
+                        item.hitEnemies.push(enemy);
+
+                        // 넉백 효과
+                        const dx = enemy.x - this.player.x;
+                        const dy = enemy.y - this.player.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        if (distance > 0) {
+                            const knockbackForce = 100;
+                            enemy.x += (dx / distance) * knockbackForce;
+                            enemy.y += (dy / distance) * knockbackForce;
+                        }
+                    }
+                }
+            }
+        }
+
         // 플레이어 vs 적 충돌
         for (const enemy of this.enemies) {
             const enemyBounds = enemy.getBounds();
@@ -749,6 +880,14 @@ class Game {
         // 방 그리기 (배경 + 벽)
         if (this.room) {
             this.room.draw(this.ctx, deltaTime);
+
+            // 상점이면 상점 주인 그리기
+            if (this.dungeon && this.currentRoomId !== null) {
+                const roomData = this.dungeon.rooms.get(this.currentRoomId);
+                if (roomData && roomData.type === 'shop') {
+                    this.room.drawShopkeeper(this.ctx, deltaTime);
+                }
+            }
         }
 
         // 장애물 그리기 (바닥 레이어)
@@ -774,6 +913,11 @@ class Game {
         // 발사체 그리기
         for (const projectile of this.projectiles) {
             projectile.draw(this.ctx);
+        }
+
+        // 사용 아이템 그리기 (베기)
+        for (const item of this.activeItems) {
+            item.draw(this.ctx);
         }
 
         // 플레이어 그리기
@@ -805,23 +949,19 @@ class Game {
 
         // 아이템 획득 표시
         if (this.showItemPickup) {
-            // 반투명 배경
-            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-            // 아이템 이름 (큰 글씨)
+            // 아이템 이름 (큰 글씨, 화면 상단)
             this.ctx.fillStyle = '#ffdd00';
             this.ctx.font = 'bold 64px Arial';
             this.ctx.textAlign = 'center';
             this.ctx.shadowBlur = 10;
             this.ctx.shadowColor = '#ffdd00';
-            this.ctx.fillText(this.pickedItemName, this.canvas.width / 2, this.canvas.height / 2 - 30);
+            this.ctx.fillText(this.pickedItemName, this.canvas.width / 2, 120);
             this.ctx.shadowBlur = 0;
 
             // 아이템 설명 (작은 글씨)
             this.ctx.fillStyle = '#ffffff';
             this.ctx.font = '28px Arial';
-            this.ctx.fillText(this.pickedItemDescription, this.canvas.width / 2, this.canvas.height / 2 + 40);
+            this.ctx.fillText(this.pickedItemDescription, this.canvas.width / 2, 170);
 
             this.ctx.textAlign = 'left';
         }

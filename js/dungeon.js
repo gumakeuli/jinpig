@@ -148,8 +148,24 @@ class DungeonGenerator {
             this.endRooms.pop();
         }
 
-        // 보물방: 랜덤한 막다른 방
-        if (this.endRooms.length > 0) {
+        // 보물방: 시작 방의 이웃 중 하나를 보물방으로 지정 (테스트용)
+        const startNode = this.rooms.get(this.startRoom);
+        if (startNode && startNode.neighbors.length > 0) {
+            // 랜덤하게 이웃 선택
+            const neighborId = startNode.neighbors[Math.floor(Math.random() * startNode.neighbors.length)];
+            this.treasureRoom = neighborId;
+
+            const room = this.rooms.get(this.treasureRoom);
+            room.type = 'treasure';
+            this.grid[this.treasureRoom].type = 'treasure';
+
+            // 혹시 이 방이 endRooms에 있었다면 제거 (중복 방지)
+            const endRoomIndex = this.endRooms.indexOf(neighborId);
+            if (endRoomIndex !== -1) {
+                this.endRooms.splice(endRoomIndex, 1);
+            }
+        } else if (this.endRooms.length > 0) {
+            // 폴백: 시작 방 이웃이 없으면 기존 로직대로 막다른 방에 배치
             const index = Math.floor(Math.random() * this.endRooms.length);
             this.treasureRoom = this.endRooms[index];
             const room = this.rooms.get(this.treasureRoom);
@@ -158,8 +174,34 @@ class DungeonGenerator {
             this.endRooms.splice(index, 1);
         }
 
-        // 상점: 랜덤한 막다른 방
-        if (this.endRooms.length > 0) {
+        // 상점: 시작 방의 이웃 중 보물방이 아닌 곳에 배치
+        if (startNode && startNode.neighbors.length > 0) {
+            // 보물방이 아닌 이웃 찾기
+            const availableNeighbors = startNode.neighbors.filter(id => id !== this.treasureRoom);
+
+            if (availableNeighbors.length > 0) {
+                const neighborId = availableNeighbors[Math.floor(Math.random() * availableNeighbors.length)];
+                this.shopRoom = neighborId;
+
+                const room = this.rooms.get(this.shopRoom);
+                room.type = 'shop';
+                this.grid[this.shopRoom].type = 'shop';
+
+                // endRooms 정리
+                const endRoomIndex = this.endRooms.indexOf(neighborId);
+                if (endRoomIndex !== -1) {
+                    this.endRooms.splice(endRoomIndex, 1);
+                }
+            } else if (this.endRooms.length > 0) {
+                // 폴백: 이웃이 꽉 찼으면 막다른 방에 배치
+                const index = Math.floor(Math.random() * this.endRooms.length);
+                this.shopRoom = this.endRooms[index];
+                const room = this.rooms.get(this.shopRoom);
+                room.type = 'shop';
+                this.grid[this.shopRoom].type = 'shop';
+                this.endRooms.splice(index, 1);
+            }
+        } else if (this.endRooms.length > 0) {
             const index = Math.floor(Math.random() * this.endRooms.length);
             this.shopRoom = this.endRooms[index];
             const room = this.rooms.get(this.shopRoom);

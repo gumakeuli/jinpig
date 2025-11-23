@@ -4,8 +4,8 @@ class Item {
         this.x = x;
         this.y = y;
         this.type = type;
-        this.width = 48;
-        this.height = 48;
+        this.width = 80;
+        this.height = 80;
         this.active = true;
 
         // 받침대 이미지 (11번)
@@ -23,11 +23,18 @@ class Item {
 
         if (imagePath) {
             this.itemImage = new Image();
+            // this.itemImage.crossOrigin = 'anonymous'; // 로컬 파일에서는 제거
+            console.log(`아이템 이미지 로드 시도: ${imagePath}`);
             this.itemImage.src = imagePath;
             this.itemImage.onload = () => {
-                // 크로마키 처리 (초록색 제거)
-                this.applyChromaKey();
+                console.log(`아이템 이미지 로드 성공: ${imagePath}`);
+                // 크로마키 처리 (초록색 제거) - 이미지 전처리로 대체됨
+                // this.applyChromaKey();
                 this.itemLoaded = true;
+            };
+            this.itemImage.onerror = () => {
+                console.error(`아이템 이미지 로드 실패: ${imagePath}`);
+                this.itemLoaded = false;
             };
         }
 
@@ -41,7 +48,7 @@ class Item {
     }
 
     setupType() {
-        switch(this.type) {
+        switch (this.type) {
             case 'lilith_body':
                 this.name = '릴리스의 바디';
                 this.description = '갓데스 스쿼드를 위하여';
@@ -105,45 +112,78 @@ class Item {
                     player.health = Math.min(player.health + 1, player.maxHealth);
                 };
                 break;
+            case 'mystery_item':
+                this.name = '플뢰르 드 리스의 검';
+                this.description = '속박을 끊고 피어난 진정한 용기';
+                this.color = '#9900ff';
+                this.effect = (player) => {
+                    // 효과 없음 (플레이스홀더)
+                    console.log('플뢰르 드 리스의 검 획득!');
+                };
+                break;
+            case 'active_slash':
+                this.name = '베기 공격';
+                this.description = '스페이스바로 전방 베기';
+                this.color = '#ff0000';
+                this.effect = (player) => {
+                    player.activeItem = 'slash';
+                    console.log('베기 공격 아이템 획득!');
+                };
+                break;
         }
     }
 
     // 크로마키 처리 (초록색 제거)
     applyChromaKey() {
-        if (!this.itemImage) return;
-
-        // 임시 캔버스 생성
-        const tempCanvas = document.createElement('canvas');
-        const tempCtx = tempCanvas.getContext('2d');
-
-        tempCanvas.width = this.itemImage.width;
-        tempCanvas.height = this.itemImage.height;
-
-        // 이미지를 캔버스에 그리기
-        tempCtx.drawImage(this.itemImage, 0, 0);
-
-        // 픽셀 데이터 가져오기
-        const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
-        const data = imageData.data;
-
-        // 초록색 픽셀을 투명하게 만들기
-        for (let i = 0; i < data.length; i += 4) {
-            const r = data[i];
-            const g = data[i + 1];
-            const b = data[i + 2];
-
-            // 초록색 감지 (G값이 R과 B보다 충분히 높은 경우)
-            // 임계값: G > 100 && G > R + 50 && G > B + 50
-            if (g > 100 && g > r + 50 && g > b + 50) {
-                data[i + 3] = 0; // 알파값을 0으로 (투명)
-            }
+        if (!this.itemImage) {
+            console.log('크로마키 처리 실패: 이미지 없음');
+            return;
         }
 
-        // 수정된 픽셀 데이터를 다시 캔버스에 적용
-        tempCtx.putImageData(imageData, 0, 0);
+        try {
+            // 임시 캔버스 생성
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
 
-        // 처리된 캔버스 저장
-        this.processedItemCanvas = tempCanvas;
+            tempCanvas.width = this.itemImage.width;
+            tempCanvas.height = this.itemImage.height;
+
+            console.log(`크로마키 처리 시작: ${this.itemImage.width}x${this.itemImage.height}`);
+
+            // 이미지를 캔버스에 그리기
+            tempCtx.drawImage(this.itemImage, 0, 0);
+
+            // 픽셀 데이터 가져오기
+            const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+            const data = imageData.data;
+
+            let removedPixels = 0;
+            // 초록색 픽셀을 투명하게 만들기
+            for (let i = 0; i < data.length; i += 4) {
+                const r = data[i];
+                const g = data[i + 1];
+                const b = data[i + 2];
+
+                // 초록색 감지 (G값이 R과 B보다 충분히 높은 경우)
+                // 임계값: G > 100 && G > R + 50 && G > B + 50
+                if (g > 100 && g > r + 50 && g > b + 50) {
+                    data[i + 3] = 0; // 알파값을 0으로 (투명)
+                    removedPixels++;
+                }
+            }
+
+            console.log(`크로마키 처리 완료: ${removedPixels}개 픽셀 제거`);
+
+            // 수정된 픽셀 데이터를 다시 캔버스에 적용
+            tempCtx.putImageData(imageData, 0, 0);
+
+            // 처리된 캔버스 저장
+            this.processedItemCanvas = tempCanvas;
+        } catch (error) {
+            console.error('크로마키 처리 중 오류:', error);
+            // 오류 발생 시 원본 이미지 사용
+            this.processedItemCanvas = null;
+        }
     }
 
     // 업데이트
@@ -175,9 +215,12 @@ class Item {
 
         // 아이템 이미지가 있으면 이미지로, 없으면 기본 다이아몬드
         if (this.itemImage && this.itemLoaded) {
+            // 크로마키 처리된 이미지가 있으면 사용, 없으면 원본 사용
+            const imageSource = this.processedItemCanvas || this.itemImage;
+
             // 아이템 이미지 그리기 (떠다니는 효과)
             ctx.drawImage(
-                this.itemImage,
+                imageSource,
                 this.x - this.width / 2,
                 this.y - this.height / 2 + floatY - 20, // 받침대 위에 떠있게
                 this.width,
