@@ -409,4 +409,14 @@ class Player {
             height: this.height
         };
     }
+
+    // 아이템 사용 가능 여부
+    canUseItem() {
+        return this.activeItem && this.itemCooldown <= 0;
+    }
+
+    // 아이템 사용 처리
+    useItem() {
+        this.itemCooldown = this.itemMaxCooldown;
+    }
 }

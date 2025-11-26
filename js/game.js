@@ -56,6 +56,7 @@ class Game {
         this.transitionCooldownDuration = 1000; // 1초 쿨다운
 
         this.setupEventListeners();
+        this.camera = { x: 0, y: 0 };
     }
 
     setupEventListeners() {
@@ -164,6 +165,7 @@ class Game {
 
     // 이웃 셀 ID를 방향으로 변환
     getNeighborDirections(neighbors) {
+        console.log('getNeighborDirections', neighbors);
         const directions = [];
         const currentId = this.currentRoomId;
 
@@ -231,8 +233,29 @@ class Game {
 
     // 방 로드 (적 생성 여부 결정)
     loadRoom(hasEnemies, roomType = 'normal', neighbors = []) {
+        console.log('loadRoom start', roomType, neighbors);
+
+        // 방 크기 결정
+        let roomWidth = this.canvas.width;
+        let roomHeight = this.canvas.height;
+
+        if (roomType === 'boss') {
+            roomWidth = this.canvas.width * 2;
+            roomHeight = this.canvas.height * 2;
+        }
+
         // 새 방 생성
-        this.room = new Room(this.canvas.width, this.canvas.height, hasEnemies);
+        this.room = new Room(roomWidth, roomHeight, hasEnemies);
+
+        // 카메라 초기화 (보스방이면 중앙, 아니면 0,0)
+        if (roomType === 'boss') {
+            // 플레이어가 문으로 들어오므로 위치에 따라 카메라 조정 필요하지만, 일단 0,0으로 시작하고 update에서 조정
+            this.camera.x = 0;
+            this.camera.y = 0;
+        } else {
+            this.camera.x = 0;
+            this.camera.y = 0;
+        }
 
         // 이웃 정보로 문 설정
         if (neighbors.length > 0) {
@@ -250,12 +273,18 @@ class Game {
                             this.room.setTreasureDoor(directionToTreasure);
                         }
                     }
-
                     // 상점 문 설정
                     if (neighborData.type === 'shop') {
                         const directionToShop = this.getDirectionBetween(this.currentRoomId, neighborId);
                         if (directionToShop) {
                             this.room.setShopDoor(directionToShop);
+                        }
+                    }
+                    // 보스방 문 설정
+                    if (neighborData.type === 'boss') {
+                        const directionToBoss = this.getDirectionBetween(this.currentRoomId, neighborId);
+                        if (directionToBoss) {
+                            this.room.setBossDoor(directionToBoss);
                         }
                     }
                 }
@@ -269,10 +298,13 @@ class Game {
 
         // 방 타입별 처리
         if (roomType === 'boss') {
-            // 보스방: 강한 적 생성
-            this.spawnEnemy(400, 200, 'tank');
-            this.spawnEnemy(300, 300, 'tank');
-            this.spawnEnemy(500, 300, 'fast');
+            // 보스방: 강한 적 생성 (넓은 맵에 분산 배치)
+            this.spawnEnemy(roomWidth / 2, roomHeight / 2, 'tank');
+            this.spawnEnemy(roomWidth / 2 - 200, roomHeight / 2 + 200, 'tank');
+            this.spawnEnemy(roomWidth / 2 + 200, roomHeight / 2 + 200, 'tank');
+            this.spawnEnemy(roomWidth / 2 - 300, roomHeight / 2 - 300, 'fast');
+            this.spawnEnemy(roomWidth / 2 + 300, roomHeight / 2 - 300, 'fast');
+
             this.room.closeAllDoors();
         } else if (roomType === 'treasure') {
             // 보물방: 중앙에 아이템 생성
@@ -294,7 +326,11 @@ class Game {
             // 모든 문 열기 (장애물 없음)
             this.room.openAllDoors();
         } else if (roomType === 'shop') {
-            // 상점: 비어있음 (나중에 별의 소리로 구매할 아이템 추가 가능)
+            // 상점
+            // 회복 포션 추가 (상점 주인 근처나 특정 위치에)
+            const potion = new Item(this.canvas.width / 2 - 150, this.canvas.height / 2 + 100, 'potion', 'assets/images/items/16.png');
+            this.items.push(potion);
+
             this.room.openAllDoors();
         } else if (hasEnemies) {
             // 일반 전투 방
@@ -347,22 +383,28 @@ class Game {
         // 다음 방이 존재하는지 확인
         const roomData = this.dungeon.rooms.get(this.currentRoomId);
         if (roomData && roomData.neighbors.includes(nextRoomId)) {
+            // 새로운 방 로드 (먼저 로드해야 방 크기를 알 수 있음)
+            this.loadRoomById(nextRoomId);
+
             // 플레이어 위치를 반대편 문 근처로 이동
-            const centerX = this.canvas.width / 2;
-            const centerY = this.canvas.height / 2;
+            // 현재 방의 크기를 기준으로 위치 설정
+            const roomWidth = this.room.canvasWidth;
+            const roomHeight = this.room.canvasHeight;
+            const centerX = roomWidth / 2;
+            const centerY = roomHeight / 2;
             const offset = 80;
 
             switch (direction) {
                 case 'top':
                     this.player.x = centerX;
-                    this.player.y = this.canvas.height - offset;
+                    this.player.y = roomHeight - offset;
                     break;
                 case 'bottom':
                     this.player.x = centerX;
                     this.player.y = offset;
                     break;
                 case 'left':
-                    this.player.x = this.canvas.width - offset;
+                    this.player.x = roomWidth - offset;
                     this.player.y = centerY;
                     break;
                 case 'right':
@@ -370,9 +412,6 @@ class Game {
                     this.player.y = centerY;
                     break;
             }
-
-            // 새로운 방 로드
-            this.loadRoomById(nextRoomId);
         }
 
         // 전환 상태 리셋
@@ -454,16 +493,25 @@ class Game {
     }
 
     run(currentTime) {
-        if (!this.isRunning || this.isPaused) return;
+        try {
+            if (!this.isRunning || this.isPaused) return;
 
-        // deltaTime 계산 (초 단위)
-        const deltaTime = (currentTime - this.lastTime) / 1000;
-        this.lastTime = currentTime;
+            // deltaTime 계산 (초 단위)
+            const deltaTime = (currentTime - this.lastTime) / 1000;
+            this.lastTime = currentTime;
 
-        this.update(deltaTime, currentTime);
-        this.draw(deltaTime);
+            this.update(deltaTime, currentTime);
+            this.draw(deltaTime);
 
-        this.gameLoop = requestAnimationFrame((time) => this.run(time));
+            this.gameLoop = requestAnimationFrame((time) => this.run(time));
+        } catch (error) {
+            console.error("Game Loop Error:", error);
+            // Optionally draw error to canvas
+            this.ctx.fillStyle = 'red';
+            this.ctx.font = '20px Arial';
+            this.ctx.fillText("Error: " + error.message, 10, 50);
+            this.isRunning = false;
+        }
     }
 
     update(deltaTime, currentTime) {
@@ -502,9 +550,22 @@ class Game {
         if (this.player) {
             this.player.update(deltaTime, this.canvas.width, this.canvas.height);
 
-            // 방 경계 제약
+            // 방 경계 제약 (현재 방 크기 기준)
             if (this.room) {
                 this.room.constrainEntity(this.player);
+
+                // 카메라 업데이트 (플레이어 따라가기)
+                // 카메라 목표 위치: 플레이어 중심 - 화면 중심
+                let targetCamX = this.player.x - this.canvas.width / 2;
+                let targetCamY = this.player.y - this.canvas.height / 2;
+
+                // 카메라 경계 제한 (방 밖으로 나가지 않게)
+                targetCamX = Math.max(0, Math.min(targetCamX, this.room.canvasWidth - this.canvas.width));
+                targetCamY = Math.max(0, Math.min(targetCamY, this.room.canvasHeight - this.canvas.height));
+
+                // 부드러운 이동 (Lerp)
+                this.camera.x += (targetCamX - this.camera.x) * 0.1;
+                this.camera.y += (targetCamY - this.camera.y) * 0.1;
 
                 // 장애물 충돌 체크
                 const collidedObstacle = this.room.checkObstacleCollision(this.player);
@@ -549,7 +610,9 @@ class Game {
                 if (this.transitionCooldown <= 0) {
                     const doorDirection = this.room.checkDoorCollision(this.player);
                     if (doorDirection && !this.isTransitioning) {
-                        this.startRoomTransition(doorDirection);
+                        // Directly complete transition for immediate room change
+                        this.nextRoomDirection = doorDirection;
+                        this.completeRoomTransition();
                     }
                 }
             }
@@ -750,6 +813,14 @@ class Game {
         }
     }
 
+
+
+
+
+
+
+
+
     // 충돌 감지
     checkCollisions() {
         if (!this.player) return;
@@ -833,37 +904,60 @@ class Game {
                         this.player.x += (dx / distance) * knockbackForce;
                         this.player.y += (dy / distance) * knockbackForce;
                     }
+                    // 플레이어 vs 아이템 충돌
+                    for (let i = this.items.length - 1; i >= 0; i--) {
+                        const item = this.items[i];
+                        if (!item.active) continue; // 비활성 아이템 스킵
+
+                        const itemBounds = item.getBounds();
+
+                        if (checkCollision(playerBounds, itemBounds)) {
+                            // 가격이 있는 아이템 (상점)
+                            if (item.price > 0) {
+                                if (this.starCount >= item.price) {
+                                    // 구매 성공
+                                    this.starCount -= item.price;
+
+                                    // 아이템 정보 저장 (화면 표시용)
+                                    this.pickedItemName = item.name;
+                                    this.pickedItemDescription = item.description;
+                                    this.showItemPickup = true;
+                                    this.itemPickupTimer = 0;
+
+                                    // 아이템 효과 적용
+                                    item.apply(this.player);
+                                    console.log(`${item.name} 구매 완료! 잔액: ${this.starCount}`);
+                                } else {
+                                    // 구매 실패 (돈 부족)
+                                    // TODO: 돈 부족 메시지 표시?
+                                    console.log('별의 소리가 부족합니다!'); // 로그 스팸 방지
+                                }
+                            } else {
+                                // 일반 아이템 획득
+                                this.pickedItemName = item.name;
+                                this.pickedItemDescription = item.description;
+                                this.showItemPickup = true;
+                                this.itemPickupTimer = 0;
+
+                                // 아이템 효과 적용
+                                item.apply(this.player);
+                                this.updateScore(5); // 아이템 획득 점수
+                            }
+                        }
+                    }
+
+                    // 플레이어 vs 별의 소리 충돌
+                    for (let i = this.stars.length - 1; i >= 0; i--) {
+                        const star = this.stars[i];
+                        const starBounds = star.getBounds();
+
+                        if (checkCollision(playerBounds, starBounds)) {
+                            // 별의 소리 획득
+                            this.starCount++;
+                            this.stars.splice(i, 1);
+                        }
+                    }
                 }
-            }
-        }
-
-        // 플레이어 vs 아이템 충돌
-        for (let i = this.items.length - 1; i >= 0; i--) {
-            const item = this.items[i];
-            const itemBounds = item.getBounds();
-
-            if (checkCollision(playerBounds, itemBounds)) {
-                // 아이템 정보 저장 (화면 표시용)
-                this.pickedItemName = item.name;
-                this.pickedItemDescription = item.description;
-                this.showItemPickup = true;
-                this.itemPickupTimer = 0;
-
-                // 아이템 효과 적용
-                item.apply(this.player);
-                this.updateScore(5); // 아이템 획득 점수
-            }
-        }
-
-        // 플레이어 vs 별의 소리 충돌
-        for (let i = this.stars.length - 1; i >= 0; i--) {
-            const star = this.stars[i];
-            const starBounds = star.getBounds();
-
-            if (checkCollision(playerBounds, starBounds)) {
-                // 별의 소리 획득
-                this.starCount++;
-                this.stars.splice(i, 1);
             }
         }
     }
@@ -875,13 +969,18 @@ class Game {
     }
 
     draw(deltaTime = 0) {
+        // 화면 클리어
         this.clear();
 
-        // 방 그리기 (배경 + 벽)
+        // 카메라 적용
+        this.ctx.save();
+        this.ctx.translate(-this.camera.x, -this.camera.y);
+
+        // 방 그리기
         if (this.room) {
             this.room.draw(this.ctx, deltaTime);
 
-            // 상점이면 상점 주인 그리기
+            // 상점 주인 그리기 (상점일 때만)
             if (this.dungeon && this.currentRoomId !== null) {
                 const roomData = this.dungeon.rooms.get(this.currentRoomId);
                 if (roomData && roomData.type === 'shop') {
@@ -890,12 +989,7 @@ class Game {
             }
         }
 
-        // 장애물 그리기 (바닥 레이어)
-        if (this.room) {
-            this.room.drawObstacles(this.ctx);
-        }
-
-        // 아이템 그리기 (바닥에 먼저)
+        // 아이템 그리기
         for (const item of this.items) {
             item.draw(this.ctx);
         }
@@ -905,19 +999,14 @@ class Game {
             star.draw(this.ctx);
         }
 
+        // 장애물 그리기 (플레이어보다 뒤에 있는 것)
+        if (this.room) {
+            this.room.drawObstacles(this.ctx);
+        }
+
         // 적 그리기
         for (const enemy of this.enemies) {
             enemy.draw(this.ctx);
-        }
-
-        // 발사체 그리기
-        for (const projectile of this.projectiles) {
-            projectile.draw(this.ctx);
-        }
-
-        // 사용 아이템 그리기 (베기)
-        for (const item of this.activeItems) {
-            item.draw(this.ctx);
         }
 
         // 플레이어 그리기
@@ -925,45 +1014,62 @@ class Game {
             this.player.draw(this.ctx);
         }
 
-        // UI/HUD 그리기
-        this.ui.draw(this.ctx, this.player, this.starCount);
+        // 발사체 그리기
+        for (const projectile of this.projectiles) {
+            projectile.draw(this.ctx);
+        }
+
+        // 사용 아이템 효과 그리기
+        for (const item of this.activeItems) {
+            item.draw(this.ctx);
+        }
+
+        // 카메라 복구
+        this.ctx.restore();
+
+        // UI 그리기 (카메라 영향 안 받음)
+        this.ui.draw(this.ctx, this.score, this.player ? this.player.health : 0, this.player ? this.player.maxHealth : 3, this.player ? this.player.starCount : 0);
 
         // 미니맵 그리기
         if (this.minimap) {
             this.minimap.draw(this.ctx);
         }
 
-        // 스테이지 텍스트 표시 (게임 시작 및 스테이지 전환 시)
+        // 스테이지 텍스트
         if (this.showStageText) {
-            // 반투명 배경
-            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+            this.ctx.fillStyle = `rgba(0, 0, 0, ${Math.min(0.7, this.stageTextTimer * 2)})`;
             this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-            // 스테이지 텍스트
-            this.ctx.fillStyle = '#ffffff';
-            this.ctx.font = 'bold 72px Arial';
+            this.ctx.save();
+            this.ctx.shadowColor = '#000';
+            this.ctx.shadowBlur = 10;
+            this.ctx.fillStyle = '#fff';
+            this.ctx.font = 'bold 60px Arial';
             this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'middle';
             this.ctx.fillText(`STAGE ${this.level}`, this.canvas.width / 2, this.canvas.height / 2);
-            this.ctx.textAlign = 'left';
+            this.ctx.restore();
         }
 
-        // 아이템 획득 표시
+        // 아이템 획득 텍스트
         if (this.showItemPickup) {
-            // 아이템 이름 (큰 글씨, 화면 상단)
-            this.ctx.fillStyle = '#ffdd00';
-            this.ctx.font = 'bold 64px Arial';
+            const alpha = Math.min(1, (this.itemPickupDuration - this.itemPickupTimer) * 2);
+
+            this.ctx.save();
+            this.ctx.globalAlpha = alpha;
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            this.ctx.roundRect(this.canvas.width / 2 - 200, 100, 400, 80, 10);
+            this.ctx.fill();
+
+            this.ctx.fillStyle = '#fff';
+            this.ctx.font = 'bold 24px Arial';
             this.ctx.textAlign = 'center';
-            this.ctx.shadowBlur = 10;
-            this.ctx.shadowColor = '#ffdd00';
-            this.ctx.fillText(this.pickedItemName, this.canvas.width / 2, 120);
-            this.ctx.shadowBlur = 0;
+            this.ctx.fillText(`획득: ${this.pickedItemName}`, this.canvas.width / 2, 135);
 
-            // 아이템 설명 (작은 글씨)
-            this.ctx.fillStyle = '#ffffff';
-            this.ctx.font = '28px Arial';
-            this.ctx.fillText(this.pickedItemDescription, this.canvas.width / 2, 170);
-
-            this.ctx.textAlign = 'left';
+            this.ctx.font = '16px Arial';
+            this.ctx.fillStyle = '#ccc';
+            this.ctx.fillText(this.pickedItemDescription, this.canvas.width / 2, 160);
+            this.ctx.restore();
         }
 
         // 방 전환 중이면 어두운 오버레이
@@ -1048,3 +1154,4 @@ class Game {
         }, 2000);
     }
 }
+

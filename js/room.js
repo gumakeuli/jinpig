@@ -81,6 +81,13 @@ class Room {
         }
     }
 
+    // 보스방 문으로 설정
+    setBossDoor(direction) {
+        if (this.doors[direction]) {
+            this.doors[direction].isBossDoor = true;
+        }
+    }
+
     // 모든 문 열기
     openAllDoors() {
         for (const direction in this.doors) {
@@ -450,7 +457,25 @@ class Room {
             // 말풍선 배경
             ctx.fillStyle = 'white';
             ctx.beginPath();
-            ctx.roundRect(bubbleX - bubbleWidth / 2, bubbleY - bubbleHeight, bubbleWidth, bubbleHeight, 10);
+            // ctx.roundRect(bubbleX - bubbleWidth / 2, bubbleY - bubbleHeight, bubbleWidth, bubbleHeight, 10);
+            // 호환성을 위해 일반 rect 사용 (또는 커스텀 roundRect 구현)
+            const x = bubbleX - bubbleWidth / 2;
+            const y = bubbleY - bubbleHeight;
+            const w = bubbleWidth;
+            const h = bubbleHeight;
+            const r = 10;
+
+            ctx.moveTo(x + r, y);
+            ctx.lineTo(x + w - r, y);
+            ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+            ctx.lineTo(x + w, y + h - r);
+            ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+            ctx.lineTo(x + r, y + h);
+            ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+            ctx.lineTo(x, y + r);
+            ctx.quadraticCurveTo(x, y, x + r, y);
+            ctx.closePath();
+
             ctx.fill();
 
             // 말풍선 꼬리

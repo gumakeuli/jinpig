@@ -26,6 +26,14 @@ function setupButtons() {
         // 타이틀 화면 숨기기
         gameTitle.style.display = 'none';
     });
+
+    // 엔터키로 게임 시작
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && gameTitle.style.display !== 'none') {
+            game.start();
+            gameTitle.style.display = 'none';
+        }
+    });
 }
 
 // 게임 오버 시 타이틀 다시 표시

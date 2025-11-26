@@ -43,153 +43,85 @@ class Item {
         this.floatSpeed = 2;
         this.floatRange = 12; // 위아래로 12픽셀
 
+        this.price = 0; // 아이템 가격 (0이면 무료)
+
+        // 별의 소리 이미지 (가격 표시용)
+        this.starImage = new Image();
+        this.starImage.src = 'assets/images/8.webp';
+
         // 타입별 설정
         this.setupType();
     }
 
     setupType() {
         switch (this.type) {
+            case 'potion':
+                this.name = '회복 포션';
+                this.description = '체력을 1 회복합니다.';
+                this.color = '#ff0000';
+                this.price = 15;
+                this.effect = (player) => {
+                    player.heal(1);
+                };
+                break;
             case 'lilith_body':
-                this.name = '릴리스의 바디';
-                this.description = '갓데스 스쿼드를 위하여';
-                this.color = '#ff0066';
+                this.name = '릴리스의 몸통';
+                this.description = '최대 체력이 1 증가합니다.';
+                this.color = '#ff00ff';
                 this.effect = (player) => {
-                    // 체력 +1
-                    player.maxHealth = Math.min(player.maxHealth + 1, player.maxHealthCap);
-                    player.health = Math.min(player.health + 1, player.maxHealth);
-
-                    // 공격력 +1
-                    player.damage = Math.min(player.damage + 1, player.damageCap);
-
-                    // 공격속도 +1
-                    player.attackSpeed = Math.min(player.attackSpeed + 1, player.attackSpeedCap);
-                    player.updateFireRate();
+                    player.maxHealth += 1;
+                    player.heal(1);
                 };
                 break;
-
-            case 'health':
-                this.name = '체력 증가';
-                this.description = '최대 체력 +2';
-                this.color = '#ff0066';
-                this.effect = (player) => {
-                    player.maxHealth += 2;
-                    player.health = Math.min(player.health + 2, player.maxHealth);
-                };
-                break;
-
-            case 'speed':
-                this.name = '이동 속도 증가';
-                this.description = '이동 속도 +30';
+            case 'mystery_item':
+                this.name = '신비한 아이템';
+                this.description = '공격력이 1 증가합니다.';
                 this.color = '#00ffff';
-                this.effect = (player) => {
-                    player.speed += 30;
-                };
-                break;
-
-            case 'damage':
-                this.name = '공격력 증가';
-                this.description = '공격력 +1';
-                this.color = '#ffff00';
                 this.effect = (player) => {
                     player.damage += 1;
                 };
                 break;
-
-            case 'firerate':
-                this.name = '연사력 증가';
-                this.description = '발사 속도 증가';
-                this.color = '#ff9900';
-                this.effect = (player) => {
-                    player.fireRate = Math.max(50, player.fireRate - 50);
-                };
-                break;
-
-            case 'heal':
-                this.name = '체력 회복';
-                this.description = '체력 +1 회복';
-                this.color = '#00ff00';
-                this.effect = (player) => {
-                    player.health = Math.min(player.health + 1, player.maxHealth);
-                };
-                break;
-            case 'mystery_item':
-                this.name = '플뢰르 드 리스의 검';
-                this.description = '속박을 끊고 피어난 진정한 용기';
-                this.color = '#9900ff';
-                this.effect = (player) => {
-                    // 효과 없음 (플레이스홀더)
-                    console.log('플뢰르 드 리스의 검 획득!');
-                };
-                break;
-            case 'active_slash':
-                this.name = '베기 공격';
-                this.description = '스페이스바로 전방 베기';
-                this.color = '#ff0000';
-                this.effect = (player) => {
-                    player.activeItem = 'slash';
-                    console.log('베기 공격 아이템 획득!');
-                };
+            default:
+                this.name = '알 수 없는 아이템';
+                this.description = '효과 없음';
+                this.color = '#ffffff';
+                this.effect = (player) => { };
                 break;
         }
     }
 
-    // 크로마키 처리 (초록색 제거)
     applyChromaKey() {
-        if (!this.itemImage) {
-            console.log('크로마키 처리 실패: 이미지 없음');
-            return;
-        }
+        if (!this.itemImage) return;
 
-        try {
-            // 임시 캔버스 생성
-            const tempCanvas = document.createElement('canvas');
-            const tempCtx = tempCanvas.getContext('2d');
+        const canvas = document.createElement('canvas');
+        canvas.width = this.itemImage.width;
+        canvas.height = this.itemImage.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(this.itemImage, 0, 0);
 
-            tempCanvas.width = this.itemImage.width;
-            tempCanvas.height = this.itemImage.height;
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
 
-            console.log(`크로마키 처리 시작: ${this.itemImage.width}x${this.itemImage.height}`);
+        // 초록색 배경 제거 (RGB: 0, 255, 0 근처)
+        for (let i = 0; i < data.length; i += 4) {
+            const r = data[i];
+            const g = data[i + 1];
+            const b = data[i + 2];
 
-            // 이미지를 캔버스에 그리기
-            tempCtx.drawImage(this.itemImage, 0, 0);
-
-            // 픽셀 데이터 가져오기
-            const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
-            const data = imageData.data;
-
-            let removedPixels = 0;
-            // 초록색 픽셀을 투명하게 만들기
-            for (let i = 0; i < data.length; i += 4) {
-                const r = data[i];
-                const g = data[i + 1];
-                const b = data[i + 2];
-
-                // 초록색 감지 (G값이 R과 B보다 충분히 높은 경우)
-                // 임계값: G > 100 && G > R + 50 && G > B + 50
-                if (g > 100 && g > r + 50 && g > b + 50) {
-                    data[i + 3] = 0; // 알파값을 0으로 (투명)
-                    removedPixels++;
-                }
+            // 초록색이 강하고 빨강/파랑이 약하면 투명하게
+            if (g > 100 && r < 100 && b < 100) {
+                data[i + 3] = 0; // Alpha to 0
             }
-
-            console.log(`크로마키 처리 완료: ${removedPixels}개 픽셀 제거`);
-
-            // 수정된 픽셀 데이터를 다시 캔버스에 적용
-            tempCtx.putImageData(imageData, 0, 0);
-
-            // 처리된 캔버스 저장
-            this.processedItemCanvas = tempCanvas;
-        } catch (error) {
-            console.error('크로마키 처리 중 오류:', error);
-            // 오류 발생 시 원본 이미지 사용
-            this.processedItemCanvas = null;
         }
+
+        ctx.putImageData(imageData, 0, 0);
+        this.processedItemCanvas = canvas;
     }
 
     // 업데이트
     update(deltaTime) {
-        // 떠다니는 효과
-        this.floatTimer += this.floatSpeed * deltaTime;
+        // 떠다니는 애니메이션 타이머 업데이트
+        this.floatTimer += deltaTime * this.floatSpeed;
     }
 
     // 그리기
@@ -254,6 +186,41 @@ class Item {
             ctx.strokeStyle = '#ffffff';
             ctx.lineWidth = 2;
             ctx.stroke();
+
+            ctx.restore();
+        }
+
+        // 가격 표시 (상점 아이템인 경우)
+        if (this.price > 0) {
+            ctx.save();
+            ctx.font = 'bold 20px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+
+            const text = `${this.name} - ${this.price}`;
+            const textX = this.x;
+            const textY = this.y - this.height / 2 + floatY - 30; // 아이템 위쪽
+
+            // 텍스트 외곽선 (가독성)
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = 'black';
+            ctx.strokeText(text, textX - 15, textY); // 별 이미지 공간 확보를 위해 약간 왼쪽으로
+
+            // 텍스트 채우기
+            ctx.fillStyle = 'white';
+            ctx.fillText(text, textX - 15, textY);
+
+            // 별 이미지 그리기
+            if (this.starImage.complete) {
+                const starSize = 24;
+                // 텍스트 너비 측정해서 별 위치 조정하면 좋겠지만 간단하게 고정 오프셋 사용
+                // 텍스트 끝부분 쯤에 별 그리기
+                const textMetrics = ctx.measureText(text);
+                const starX = textX - 15 + textMetrics.width / 2 + 5;
+                const starY = textY - starSize + 4;
+
+                ctx.drawImage(this.starImage, starX, starY, starSize, starSize);
+            }
 
             ctx.restore();
         }

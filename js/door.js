@@ -13,6 +13,7 @@ class Door {
         this.isOpen = false; // 문이 열려있는지 (처음엔 닫혀있음)
         this.isTreasureDoor = false; // 보물방 문인지
         this.isShopDoor = false; // 상점 문인지
+        this.isBossDoor = false; // 보스방 문인지
 
         // 애니메이션 타이머
         this.animTimer = Math.random() * Math.PI * 2;
@@ -162,6 +163,68 @@ class Door {
             radialGradient.addColorStop(1, 'rgba(255, 215, 0, 0)');
             ctx.fillStyle = radialGradient;
             ctx.fillRect(this.x, this.y, this.width, this.height);
+
+        } else if (this.isBossDoor) {
+            // 보스방 문 (검은색 + 해골)
+            const pulseIntensity = (Math.sin(this.animTimer * 3) + 1) / 2;
+
+            // 기본 베이스 (검은색)
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+
+            // 붉은 기운
+            const gradient = ctx.createLinearGradient(this.x, this.y, this.x + this.width, this.y + this.height);
+            gradient.addColorStop(0, `rgba(255, 0, 0, ${0.2 + pulseIntensity * 0.2})`);
+            gradient.addColorStop(0.5, `rgba(100, 0, 0, ${0.4 + pulseIntensity * 0.3})`);
+            gradient.addColorStop(1, `rgba(255, 0, 0, ${0.2 + pulseIntensity * 0.2})`);
+            ctx.fillStyle = gradient;
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+
+            // 외곽 글로우 (붉은색)
+            ctx.shadowBlur = 10 + pulseIntensity * 15;
+            ctx.shadowColor = '#ff0000';
+            ctx.strokeStyle = `rgba(255, 0, 0, ${0.8 + pulseIntensity * 0.2})`;
+            ctx.lineWidth = 3;
+            ctx.strokeRect(this.x, this.y, this.width, this.height);
+            ctx.shadowBlur = 0;
+
+            // 해골 문양 그리기
+            ctx.fillStyle = '#cccccc';
+            const skullX = centerX;
+            const skullY = centerY;
+            const skullSize = 15;
+
+            // 해골 머리
+            ctx.beginPath();
+            ctx.arc(skullX, skullY - 5, skullSize, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 해골 턱
+            ctx.fillRect(skullX - 8, skullY + 5, 16, 12);
+
+            // 눈 (검은색)
+            ctx.fillStyle = '#000000';
+            ctx.beginPath();
+            ctx.arc(skullX - 5, skullY - 5, 4, 0, Math.PI * 2);
+            ctx.arc(skullX + 5, skullY - 5, 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 코
+            ctx.beginPath();
+            ctx.moveTo(skullX, skullY + 2);
+            ctx.lineTo(skullX - 2, skullY + 6);
+            ctx.lineTo(skullX + 2, skullY + 6);
+            ctx.fill();
+
+            // 이빨
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(skullX - 3, skullY + 5);
+            ctx.lineTo(skullX - 3, skullY + 15);
+            ctx.moveTo(skullX + 3, skullY + 5);
+            ctx.lineTo(skullX + 3, skullY + 15);
+            ctx.stroke();
 
         } else if (this.isOpen) {
             // 일반 열린 문 - 밝고 빛나는 느낌
