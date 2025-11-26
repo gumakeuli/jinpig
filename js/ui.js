@@ -16,7 +16,7 @@ class UI {
     }
 
     // HUD 그리기
-    draw(ctx, player, starCount) {
+    draw(ctx, player, starCount, boss = null) {
         if (!player) return;
 
         // 체력 하트 그리기
@@ -27,6 +27,40 @@ class UI {
 
         // 조작법 힌트 (게임 하단)
         this.drawControls(ctx);
+
+        // 보스 체력바
+        if (boss) {
+            this.drawBossHealthBar(ctx, boss);
+        }
+    }
+
+    // 보스 체력바
+    drawBossHealthBar(ctx, boss) {
+        const barWidth = this.canvasWidth * 0.6;
+        const barHeight = 20;
+        const x = (this.canvasWidth - barWidth) / 2;
+        const y = this.canvasHeight - 50;
+
+        // 배경 (검은색)
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(x - 2, y - 2, barWidth + 4, barHeight + 4);
+
+        // 체력 (보라색)
+        const healthPercent = Math.max(0, boss.health / boss.maxHealth);
+        ctx.fillStyle = '#800080';
+        ctx.fillRect(x, y, barWidth * healthPercent, barHeight);
+
+        // 테두리 (흰색)
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x - 2, y - 2, barWidth + 4, barHeight + 4);
+
+        // 텍스트
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 16px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('BOSS', this.canvasWidth / 2, y - 10);
+        ctx.textAlign = 'left';
     }
 
     // 하트 그리기

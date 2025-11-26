@@ -27,7 +27,7 @@ class Enemy {
         this.hitAnimDuration = 0.5; // 0.5초
 
         // 타입별 스탯 설정
-        switch(type) {
+        switch (type) {
             case 'basic':
                 this.speed = 80;
                 this.maxHealth = 3;
@@ -61,6 +61,20 @@ class Enemy {
                     { count: 1, chance: 0.4 }
                 ];
                 break;
+            case 'boss':
+                this.speed = 60;
+                this.maxHealth = 50;
+                this.damage = 2;
+                this.color = '#800080'; // 보라색
+                this.width = 120;
+                this.height = 120;
+                // 별의 소리 드랍 (대량)
+                this.starDropTable = [
+                    { count: 10, chance: 1.0 }
+                ];
+                // 보스 이미지 (임시)
+                this.imageIdle.src = 'assets/images/12.png';
+                break;
         }
 
         this.health = this.maxHealth;
@@ -71,6 +85,10 @@ class Enemy {
 
         // 피격 효과
         this.hitFlash = 0;
+
+        // 발사 타이머 (보스용)
+        this.shootTimer = 0;
+        this.shootInterval = 2.0;
     }
 
     // 타겟 설정
@@ -79,7 +97,7 @@ class Enemy {
     }
 
     // 업데이트
-    update(deltaTime) {
+    update(deltaTime, game) {
         if (!this.target || !this.active) return;
 
         // 플레이어를 향해 이동
@@ -95,6 +113,41 @@ class Enemy {
             // 이동
             this.x += dirX * this.speed * deltaTime;
             this.y += dirY * this.speed * deltaTime;
+
+            // 보스 패턴: 발사
+            if (this.type === 'boss' && game) {
+                this.shootTimer += deltaTime;
+                if (this.shootTimer >= this.shootInterval) {
+                    this.shootTimer = 0;
+
+                    // 플레이어 방향으로 발사
+                    // Projectile(x, y, vx, vy, damage, isEnemyProjectile)
+                    // Projectile 생성자가 isEnemyProjectile을 지원하는지 확인 필요. 
+                    // 일단 기본 Projectile을 사용하고 game.js에서 적 발사체 처리를 추가하거나, 
+                    // Projectile에 속성을 추가해야 함.
+                    // 여기서는 일단 발사체 생성만 함.
+
+                    // 8방향 발사
+                    const directions = [
+                        { x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 },
+                        { x: 0.7, y: 0.7 }, { x: 0.7, y: -0.7 }, { x: -0.7, y: 0.7 }, { x: -0.7, y: -0.7 }
+                    ];
+
+                    for (const dir of directions) {
+                        const projectile = new Projectile(
+                            this.x,
+                            this.y,
+                            dir.x,
+                            dir.y,
+                            this.damage
+                        );
+                        // 적 발사체임을 표시 (Projectile 클래스 수정 필요할 수 있음)
+                        projectile.isEnemy = true;
+                        projectile.color = '#ff00ff'; // 보라색 탄환
+                        game.projectiles.push(projectile);
+                    }
+                }
+            }
         }
 
         // 피격 효과 감소

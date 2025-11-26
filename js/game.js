@@ -298,12 +298,8 @@ class Game {
 
         // 방 타입별 처리
         if (roomType === 'boss') {
-            // 보스방: 강한 적 생성 (넓은 맵에 분산 배치)
-            this.spawnEnemy(roomWidth / 2, roomHeight / 2, 'tank');
-            this.spawnEnemy(roomWidth / 2 - 200, roomHeight / 2 + 200, 'tank');
-            this.spawnEnemy(roomWidth / 2 + 200, roomHeight / 2 + 200, 'tank');
-            this.spawnEnemy(roomWidth / 2 - 300, roomHeight / 2 - 300, 'fast');
-            this.spawnEnemy(roomWidth / 2 + 300, roomHeight / 2 - 300, 'fast');
+            // 보스방: 보스 적 생성 (중앙)
+            this.spawnEnemy(roomWidth / 2, roomHeight / 2, 'boss');
 
             this.room.closeAllDoors();
         } else if (roomType === 'treasure') {
@@ -711,7 +707,7 @@ class Game {
 
         // 적 업데이트
         for (let i = this.enemies.length - 1; i >= 0; i--) {
-            this.enemies[i].update(deltaTime);
+            this.enemies[i].update(deltaTime, this);
 
             // 방 경계 제약
             if (this.room) {
@@ -832,21 +828,32 @@ class Game {
             height: this.player.height
         };
 
-        // 발사체 vs 적 충돌
+        // 발사체 충돌 체크
         for (let i = this.projectiles.length - 1; i >= 0; i--) {
             const projectile = this.projectiles[i];
             const projBounds = projectile.getBounds();
 
-            for (let j = this.enemies.length - 1; j >= 0; j--) {
-                const enemy = this.enemies[j];
-                const enemyBounds = enemy.getBounds();
-
-                if (checkCollision(projBounds, enemyBounds)) {
-                    // 적이 데미지를 받음
-                    enemy.takeDamage(projectile.damage);
-                    // 발사체 제거
+            if (projectile.isEnemy) {
+                // 적 발사체 -> 플레이어 충돌
+                if (checkCollision(projBounds, playerBounds)) {
+                    if (this.player.takeDamage(projectile.damage)) {
+                        // 피격 성공
+                    }
                     projectile.active = false;
-                    break;
+                }
+            } else {
+                // 플레이어 발사체 -> 적 충돌
+                for (let j = this.enemies.length - 1; j >= 0; j--) {
+                    const enemy = this.enemies[j];
+                    const enemyBounds = enemy.getBounds();
+
+                    if (checkCollision(projBounds, enemyBounds)) {
+                        // 적이 데미지를 받음
+                        enemy.takeDamage(projectile.damage);
+                        // 발사체 제거
+                        projectile.active = false;
+                        break;
+                    }
                 }
             }
         }
@@ -1028,7 +1035,9 @@ class Game {
         this.ctx.restore();
 
         // UI 그리기 (카메라 영향 안 받음)
-        this.ui.draw(this.ctx, this.score, this.player ? this.player.health : 0, this.player ? this.player.maxHealth : 3, this.player ? this.player.starCount : 0);
+        // 보스 찾기
+        const boss = this.enemies.find(e => e.type === 'boss');
+        this.ui.draw(this.ctx, this.player, this.starCount, boss);
 
         // 미니맵 그리기
         if (this.minimap) {

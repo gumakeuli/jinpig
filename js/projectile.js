@@ -1,6 +1,6 @@
 // 발사체 클래스
 class Projectile {
-    constructor(x, y, dirX, dirY, damage = 1) {
+    constructor(x, y, dirX, dirY, damage = 1, isEnemy = false) {
         this.x = x;
         this.y = y;
         this.width = 12;
@@ -14,6 +14,8 @@ class Projectile {
         // 속성
         this.damage = damage;
         this.active = true;
+        this.isEnemy = isEnemy;
+        this.color = null;
     }
 
     // 업데이트
@@ -31,14 +33,14 @@ class Projectile {
 
     // 그리기
     draw(ctx) {
-        // 노란 원형 발사체
-        ctx.fillStyle = '#ffff00';
+        // 발사체 색상
+        ctx.fillStyle = this.color || '#ffff00';
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.width / 2, 0, Math.PI * 2);
         ctx.fill();
 
         // 테두리
-        ctx.strokeStyle = '#ffaa00';
+        ctx.strokeStyle = this.isEnemy ? '#ffffff' : '#ffaa00';
         ctx.lineWidth = 2;
         ctx.stroke();
     }
