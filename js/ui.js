@@ -19,17 +19,19 @@ class UI {
     draw(ctx, player, starCount, boss = null) {
         if (!player) return;
 
-        // 체력 하트 그리기
-        this.drawHearts(ctx, player.health, player.maxHealth);
+        // 체력 하트 그리기 (안전장치 추가)
+        const health = typeof player.health === 'number' ? player.health : 0;
+        const maxHealth = typeof player.maxHealth === 'number' ? player.maxHealth : 3;
+        this.drawHearts(ctx, health, maxHealth);
 
         // 별의 소리 개수 표시
-        this.drawStarCount(ctx, starCount);
+        this.drawStarCount(ctx, starCount || 0);
 
         // 조작법 힌트 (게임 하단)
         this.drawControls(ctx);
 
         // 보스 체력바
-        if (boss) {
+        if (boss && typeof boss.health === 'number' && typeof boss.maxHealth === 'number') {
             this.drawBossHealthBar(ctx, boss);
         }
     }

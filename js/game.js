@@ -911,60 +911,61 @@ class Game {
                         this.player.x += (dx / distance) * knockbackForce;
                         this.player.y += (dy / distance) * knockbackForce;
                     }
-                    // 플레이어 vs 아이템 충돌
-                    for (let i = this.items.length - 1; i >= 0; i--) {
-                        const item = this.items[i];
-                        if (!item.active) continue; // 비활성 아이템 스킵
-
-                        const itemBounds = item.getBounds();
-
-                        if (checkCollision(playerBounds, itemBounds)) {
-                            // 가격이 있는 아이템 (상점)
-                            if (item.price > 0) {
-                                if (this.starCount >= item.price) {
-                                    // 구매 성공
-                                    this.starCount -= item.price;
-
-                                    // 아이템 정보 저장 (화면 표시용)
-                                    this.pickedItemName = item.name;
-                                    this.pickedItemDescription = item.description;
-                                    this.showItemPickup = true;
-                                    this.itemPickupTimer = 0;
-
-                                    // 아이템 효과 적용
-                                    item.apply(this.player);
-                                    console.log(`${item.name} 구매 완료! 잔액: ${this.starCount}`);
-                                } else {
-                                    // 구매 실패 (돈 부족)
-                                    // TODO: 돈 부족 메시지 표시?
-                                    console.log('별의 소리가 부족합니다!'); // 로그 스팸 방지
-                                }
-                            } else {
-                                // 일반 아이템 획득
-                                this.pickedItemName = item.name;
-                                this.pickedItemDescription = item.description;
-                                this.showItemPickup = true;
-                                this.itemPickupTimer = 0;
-
-                                // 아이템 효과 적용
-                                item.apply(this.player);
-                                this.updateScore(5); // 아이템 획득 점수
-                            }
-                        }
-                    }
-
-                    // 플레이어 vs 별의 소리 충돌
-                    for (let i = this.stars.length - 1; i >= 0; i--) {
-                        const star = this.stars[i];
-                        const starBounds = star.getBounds();
-
-                        if (checkCollision(playerBounds, starBounds)) {
-                            // 별의 소리 획득
-                            this.starCount++;
-                            this.stars.splice(i, 1);
-                        }
-                    }
                 }
+            }
+        }
+
+        // 플레이어 vs 아이템 충돌
+        for (let i = this.items.length - 1; i >= 0; i--) {
+            const item = this.items[i];
+            if (!item.active) continue; // 비활성 아이템 스킵
+
+            const itemBounds = item.getBounds();
+
+            if (checkCollision(playerBounds, itemBounds)) {
+                // 가격이 있는 아이템 (상점)
+                if (item.price > 0) {
+                    if (this.starCount >= item.price) {
+                        // 구매 성공
+                        this.starCount -= item.price;
+
+                        // 아이템 정보 저장 (화면 표시용)
+                        this.pickedItemName = item.name;
+                        this.pickedItemDescription = item.description;
+                        this.showItemPickup = true;
+                        this.itemPickupTimer = 0;
+
+                        // 아이템 효과 적용
+                        item.apply(this.player);
+                        console.log(`${item.name} 구매 완료! 잔액: ${this.starCount}`);
+                    } else {
+                        // 구매 실패 (돈 부족)
+                        // TODO: 돈 부족 메시지 표시?
+                        console.log('별의 소리가 부족합니다!'); // 로그 스팸 방지
+                    }
+                } else {
+                    // 일반 아이템 획득
+                    this.pickedItemName = item.name;
+                    this.pickedItemDescription = item.description;
+                    this.showItemPickup = true;
+                    this.itemPickupTimer = 0;
+
+                    // 아이템 효과 적용
+                    item.apply(this.player);
+                    this.updateScore(5); // 아이템 획득 점수
+                }
+            }
+        }
+
+        // 플레이어 vs 별의 소리 충돌
+        for (let i = this.stars.length - 1; i >= 0; i--) {
+            const star = this.stars[i];
+            const starBounds = star.getBounds();
+
+            if (checkCollision(playerBounds, starBounds)) {
+                // 별의 소리 획득
+                this.starCount++;
+                this.stars.splice(i, 1);
             }
         }
     }
