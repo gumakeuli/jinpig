@@ -340,6 +340,9 @@ class Game {
         } else {
             // 시작 방은 문을 열어둠
             this.room.openAllDoors();
+
+            // 테스트용: 시작 방에 플뢰르 드 리스의 검 생성
+            this.spawnItem(this.canvas.width / 2, this.canvas.height / 2 + 100, 'mystery_item', 'assets/images/items/3.png');
         }
 
         // 장애물 생성 (시작방과 보스방 제외)
