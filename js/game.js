@@ -544,7 +544,10 @@ class Game {
 
         // 플레이어 업데이트
         if (this.player) {
-            this.player.update(deltaTime, this.canvas.width, this.canvas.height);
+            // 방 크기를 전달하여 플레이어가 방 전체를 이동할 수 있게 함
+            const roomWidth = this.room ? this.room.canvasWidth : this.canvas.width;
+            const roomHeight = this.room ? this.room.canvasHeight : this.canvas.height;
+            this.player.update(deltaTime, roomWidth, roomHeight);
 
             // 방 경계 제약 (현재 방 크기 기준)
             if (this.room) {
