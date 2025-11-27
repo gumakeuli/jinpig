@@ -78,7 +78,8 @@ class Item {
                 this.description = '속박을 끊고 피어난 진정한 용기';
                 this.color = '#00ffff';
                 this.effect = (player) => {
-                    player.damage += 1;
+                    player.activeItem = 'slash';
+                    console.log('플뢰르 드 리스의 검(베기) 장착!');
                 };
                 break;
             default:
