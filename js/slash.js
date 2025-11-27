@@ -6,14 +6,14 @@ class Slash {
         this.damage = damage;
         this.active = true;
 
-        this.lifetime = 0.3; // 0.3초 지속
+        this.lifetime = 0.5; // 0.5초 지속 (느리게)
         this.timer = 0;
 
         this.width = 100; // 검 길이
         this.height = 100; // 검 너비 (이미지 기준)
 
         // 찌르기 애니메이션 변수
-        this.maxReach = 100; // 최대 찌르기 거리
+        this.maxReach = 150; // 최대 찌르기 거리 (사거리 증가)
         this.currentReach = 0; // 현재 찌르기 거리
 
         // 이미지 로드 (3번 아이템 이미지 사용)
@@ -31,17 +31,18 @@ class Slash {
         this.y = playerY;
 
         // 찌르기 애니메이션 (갔다가 돌아오기)
-        // 0 ~ 0.5 (절반): 찌르기 (0 -> maxReach)
-        // 0.5 ~ 1.0 (나머지): 회수 (maxReach -> 0)
+        // 0 ~ 0.2 (20%): 찌르기 (빠르게)
+        // 0.2 ~ 1.0 (80%): 회수 (느리게)
         const progress = this.timer / this.lifetime;
+        const thrustRatio = 0.2;
 
-        if (progress < 0.5) {
+        if (progress < thrustRatio) {
             // 찌르기 단계 (Ease-out)
-            const t = progress * 2; // 0 ~ 1
+            const t = progress / thrustRatio; // 0 ~ 1
             this.currentReach = this.maxReach * Math.sin(t * Math.PI / 2);
         } else {
             // 회수 단계 (Ease-in)
-            const t = (progress - 0.5) * 2; // 0 ~ 1
+            const t = (progress - thrustRatio) / (1 - thrustRatio); // 0 ~ 1
             this.currentReach = this.maxReach * (1 - Math.sin(t * Math.PI / 2));
         }
 
@@ -60,9 +61,9 @@ class Slash {
         // 찌르기 거리만큼 이동
         ctx.translate(this.currentReach, 0);
 
-        // 검 이미지 회전 (검 끝이 오른쪽을 향하도록 -45도 보정)
-        // 이미지가 45도(우상향)로 되어있다고 가정하고, 이를 0도(우측)로 맞추기 위해 -45도 회전
-        ctx.rotate(-Math.PI / 4);
+        // 검 이미지 회전 (검 끝이 오른쪽을 향하도록 -90도 보정)
+        // 이미지가 위쪽(90도)을 향하고 있다고 가정
+        ctx.rotate(Math.PI / 4);
 
         ctx.drawImage(
             this.image,
