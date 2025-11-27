@@ -1,43 +1,26 @@
 class Slash {
-    constructor(x, y, direction, damage) {
+    constructor(x, y, angle, damage) {
         this.x = x; // 플레이어 위치 (회전 중심)
         this.y = y;
-        this.direction = direction; // 'up', 'down', 'left', 'right'
+        this.angle = angle; // 라디안 각도
         this.damage = damage;
         this.active = true;
 
-        this.lifetime = 0.25; // 0.25초 지속 (빠르게)
+        this.lifetime = 0.3; // 0.3초 지속
         this.timer = 0;
 
-        this.width = 100;
-        this.height = 100;
-        this.reach = 60; // 플레이어 중심으로부터의 거리
+        this.width = 100; // 검 길이
+        this.height = 100; // 검 너비 (이미지 기준)
+
+        // 찌르기 애니메이션 변수
+        this.maxReach = 100; // 최대 찌르기 거리
+        this.currentReach = 0; // 현재 찌르기 거리
 
         // 이미지 로드 (3번 아이템 이미지 사용)
         this.image = new Image();
         this.image.src = 'assets/images/items/3.png';
 
-        this.setupRotation();
-    }
-
-    setupRotation() {
-        // 방향에 따른 기준 각도 설정
-        switch (this.direction) {
-            case 'right':
-                this.baseRotation = 0;
-                break;
-            case 'down':
-                this.baseRotation = Math.PI / 2;
-                break;
-            case 'left':
-                this.baseRotation = Math.PI;
-                break;
-            case 'up':
-                this.baseRotation = -Math.PI / 2;
-                break;
-            default:
-                this.baseRotation = 0;
-        }
+        this.hitEnemies = []; // 이미 타격한 적 목록
     }
 
     update(deltaTime, playerX, playerY) {
@@ -46,6 +29,21 @@ class Slash {
         // 플레이어 위치 따라가기 (회전 중심)
         this.x = playerX;
         this.y = playerY;
+
+        // 찌르기 애니메이션 (갔다가 돌아오기)
+        // 0 ~ 0.5 (절반): 찌르기 (0 -> maxReach)
+        // 0.5 ~ 1.0 (나머지): 회수 (maxReach -> 0)
+        const progress = this.timer / this.lifetime;
+
+        if (progress < 0.5) {
+            // 찌르기 단계 (Ease-out)
+            const t = progress * 2; // 0 ~ 1
+            this.currentReach = this.maxReach * Math.sin(t * Math.PI / 2);
+        } else {
+            // 회수 단계 (Ease-in)
+            const t = (progress - 0.5) * 2; // 0 ~ 1
+            this.currentReach = this.maxReach * (1 - Math.sin(t * Math.PI / 2));
+        }
 
         if (this.timer >= this.lifetime) {
             this.active = false;
@@ -57,31 +55,13 @@ class Slash {
 
         ctx.save();
         ctx.translate(this.x, this.y); // 플레이어 위치로 이동
+        ctx.rotate(this.angle); // 마우스 방향으로 회전
 
-        // 진행률 (0 ~ 1)
-        const progress = this.timer / this.lifetime;
+        // 찌르기 거리만큼 이동
+        ctx.translate(this.currentReach, 0);
 
-        // 부채꼴 베기 애니메이션
-        // 시작 각도: 기준 각도 - 60도
-        // 끝 각도: 기준 각도 + 60도
-        // 총 120도 회전
-        const swingRange = Math.PI * 2 / 3; // 120도
-        const startAngle = -swingRange / 2;
-
-        // 진행률에 따른 현재 각도 (오른쪽에서 왼쪽으로 베기 위해 역방향 진행)
-        // progress 0 -> startAngle + swingRange (오른쪽 끝)
-        // progress 1 -> startAngle (왼쪽 끝)
-        const currentSwing = startAngle + swingRange * (1 - progress);
-
-        const totalRotation = this.baseRotation + currentSwing;
-
-        ctx.rotate(totalRotation);
-
-        // 검 그리기
-        // 검을 플레이어로부터 reach만큼 떨어진 곳에 그림
-        // 검 이미지가 위쪽을 향한다고 가정하고 회전 보정
-        ctx.translate(this.reach, 0);
-        ctx.rotate(Math.PI / 4); // 검 이미지 각도 보정 (45도)
+        // 검 이미지 회전 (검 끝이 오른쪽을 향하도록 45도 보정)
+        ctx.rotate(Math.PI / 4);
 
         ctx.drawImage(
             this.image,
@@ -93,44 +73,63 @@ class Slash {
 
         ctx.restore();
 
-        // 디버그용 히트박스 (부채꼴)
-        // ctx.beginPath();
-        // ctx.moveTo(this.x, this.y);
-        // ctx.arc(this.x, this.y, this.reach + this.width/2, this.baseRotation - swingRange/2, this.baseRotation + swingRange/2);
-        // ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
-        // ctx.fill();
+        // 디버그용 히트박스 (회전된 사각형)
+        // this.drawDebugHitbox(ctx);
     }
 
-    // 충돌 체크 (부채꼴 형태)
+    drawDebugHitbox(ctx) {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.angle);
+
+        // 찌르는 선상의 사각형
+        ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
+        // 검의 실제 타격 범위 (검 길이의 절반 정도 너비, 현재 리치만큼 길이)
+        const hitWidth = 40;
+        const hitLength = this.currentReach + 40; // 검 끝부분까지
+        ctx.fillRect(0, -hitWidth / 2, hitLength, hitWidth);
+
+        ctx.restore();
+    }
+
+    // 충돌 체크 (회전된 사각형)
     checkCollision(enemy) {
         if (!this.active) return false;
 
+        // 적 중심을 로컬 좌표계(플레이어 기준, 각도 회전 역변환)로 변환하여 AABB 체크
+        // 1. 플레이어 기준 상대 좌표
         const dx = enemy.x - this.x;
         const dy = enemy.y - this.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
 
-        // 1. 거리 체크 (사거리 내에 있는지)
-        // reach + 검 크기의 절반 정도를 사거리로 봄
-        if (distance > this.reach + this.width / 2 + enemy.width / 2) {
-            return false;
-        }
+        // 2. 회전 역변환 (공격 방향을 X축으로 정렬)
+        // x' = x * cos(-angle) - y * sin(-angle)
+        // y' = x * sin(-angle) + y * cos(-angle)
+        const cos = Math.cos(-this.angle);
+        const sin = Math.sin(-this.angle);
 
-        // 2. 각도 체크 (전방 120도 내에 있는지)
-        let angle = Math.atan2(dy, dx);
+        const localX = dx * cos - dy * sin;
+        const localY = dx * sin + dy * cos;
 
-        // 각도 정규화 (-PI ~ PI)
-        let angleDiff = angle - this.baseRotation;
+        // 3. 타격 범위 (로컬 좌표계 기준 AABB)
+        // X축: 0 ~ currentReach + 검 크기 일부
+        // Y축: -검 너비/2 ~ +검 너비/2
+        const hitLength = this.currentReach + 40; // 검 끝부분
+        const hitWidth = 40; // 타격 너비
 
-        // -PI ~ PI 사이로 보정
-        while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-        while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+        // 적의 반지름 (대략적으로)
+        const enemyRadius = enemy.width / 2;
 
-        // 전방 120도 (좌우 60도) 체크
-        const swingRange = Math.PI * 2 / 3; // 120도
-        if (Math.abs(angleDiff) <= swingRange / 2) {
-            return true;
-        }
+        // 사각형 vs 원 충돌 체크 (간소화: 사각형 vs 점 + 반지름)
+        // 가장 가까운 점 찾기
+        const closestX = Math.max(0, Math.min(localX, hitLength));
+        const closestY = Math.max(-hitWidth / 2, Math.min(localY, hitWidth / 2));
 
-        return false;
+        // 거리 계산
+        const distanceX = localX - closestX;
+        const distanceY = localY - closestY;
+
+        const distanceSquared = (distanceX * distanceX) + (distanceY * distanceY);
+
+        return distanceSquared < (enemyRadius * enemyRadius);
     }
 }

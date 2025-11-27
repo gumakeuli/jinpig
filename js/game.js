@@ -57,6 +57,8 @@ class Game {
 
         this.setupEventListeners();
         this.camera = { x: 0, y: 0 };
+        this.mouseX = 0;
+        this.mouseY = 0;
     }
 
     setupEventListeners() {
@@ -67,6 +69,13 @@ class Game {
 
         document.addEventListener('keyup', (e) => {
             this.handleKeyUp(e);
+        });
+
+        // 마우스 이동 추적
+        this.canvas.addEventListener('mousemove', (e) => {
+            const rect = this.canvas.getBoundingClientRect();
+            this.mouseX = e.clientX - rect.left;
+            this.mouseY = e.clientY - rect.top;
         });
     }
 
@@ -646,31 +655,26 @@ class Game {
                 }
             }
 
-            // 사용 아이템 (베기)
+            // 사용 아이템 (베기 -> 찌르기)
             if (this.player.keys.space && this.player.canUseItem()) {
                 if (this.player.activeItem === 'slash') {
-                    // 마지막 바라본 방향으로 베기
-                    let direction = this.player.lastDirection;
-                    // WASD 키를 방향 문자열로 변환
-                    if (direction === 'w') direction = 'up';
-                    else if (direction === 's') direction = 'down';
-                    else if (direction === 'a') direction = 'left';
-                    else if (direction === 'd') direction = 'right';
+                    // 마우스 방향으로 찌르기
+                    // 플레이어의 화면상 위치
+                    const playerScreenX = this.player.x - this.camera.x;
+                    const playerScreenY = this.player.y - this.camera.y;
 
-                    // 기본값 처리
-                    if (!['up', 'down', 'left', 'right'].includes(direction)) {
-                        direction = 'right';
-                    }
+                    // 마우스와 플레이어 사이의 각도 계산
+                    const angle = Math.atan2(this.mouseY - playerScreenY, this.mouseX - playerScreenX);
 
                     const slash = new Slash(
                         this.player.x,
                         this.player.y,
-                        direction,
-                        this.player.damage * 2 // 베기는 기본 공격력의 2배
+                        angle, // 방향 문자열 대신 각도 전달
+                        this.player.damage * 2
                     );
                     this.activeItems.push(slash);
                     this.player.useItem();
-                    console.log('베기 공격 사용!');
+                    console.log('찌르기 공격 사용!');
                 }
             }
         }
