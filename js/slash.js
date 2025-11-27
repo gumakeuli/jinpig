@@ -60,8 +60,9 @@ class Slash {
         // 찌르기 거리만큼 이동
         ctx.translate(this.currentReach, 0);
 
-        // 검 이미지 회전 (검 끝이 오른쪽을 향하도록 45도 보정)
-        ctx.rotate(Math.PI / 4);
+        // 검 이미지 회전 (검 끝이 오른쪽을 향하도록 -45도 보정)
+        // 이미지가 45도(우상향)로 되어있다고 가정하고, 이를 0도(우측)로 맞추기 위해 -45도 회전
+        ctx.rotate(-Math.PI / 4);
 
         ctx.drawImage(
             this.image,
