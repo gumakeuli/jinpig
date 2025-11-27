@@ -74,8 +74,8 @@ class Item {
                 };
                 break;
             case 'mystery_item':
-                this.name = '신비한 아이템';
-                this.description = '공격력이 1 증가합니다.';
+                this.name = '플뢰르 드 리스의 검';
+                this.description = '속박을 끊고 피어난 진정한 용기';
                 this.color = '#00ffff';
                 this.effect = (player) => {
                     player.damage += 1;
