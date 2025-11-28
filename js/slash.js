@@ -61,8 +61,9 @@ class Slash {
         // 찌르기 거리만큼 이동
         ctx.translate(this.currentReach, 0);
 
-        // 검 이미지 회전 (검 끝이 오른쪽을 향하도록 135도 보정)
-        ctx.rotate(3 * Math.PI / 4);
+        // 검 이미지 회전 (검 끝이 오른쪽을 향하도록 90도 보정)
+        // 이미지가 위쪽(90도)을 향하고 있다고 가정
+        ctx.rotate(Math.PI / 2);
 
         ctx.drawImage(
             this.image,
