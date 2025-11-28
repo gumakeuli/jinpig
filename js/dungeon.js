@@ -136,16 +136,56 @@ class DungeonGenerator {
         }
     }
 
+    // 거리 계산 (BFS)
+    calculateDistances() {
+        const distances = new Map();
+        const queue = [{ id: this.startRoom, dist: 0 }];
+        distances.set(this.startRoom, 0);
+
+        while (queue.length > 0) {
+            const { id, dist } = queue.shift();
+            const room = this.rooms.get(id);
+
+            if (room) {
+                for (const neighborId of room.neighbors) {
+                    if (!distances.has(neighborId)) {
+                        distances.set(neighborId, dist + 1);
+                        queue.push({ id: neighborId, dist: dist + 1 });
+                    }
+                }
+            }
+        }
+        return distances;
+    }
+
     // Phase 2: 특수 방 배치
     placeSpecialRooms() {
-        // 보스방: 막다른 방 중 마지막 (가장 먼 곳)
-        if (this.endRooms.length > 0) {
-            this.bossRoom = this.endRooms[this.endRooms.length - 1];
+        const distances = this.calculateDistances();
+
+        // 보스방: 시작점에서 가장 먼 방 (최소 거리 2 이상)
+        // 1. 막다른 방(endRooms) 중에서 가장 먼 것 찾기
+        let bossCandidates = this.endRooms.filter(id => distances.get(id) > 1);
+
+        // 2. 만약 적절한 막다른 방이 없으면, 전체 방 중에서 가장 먼 것 찾기
+        if (bossCandidates.length === 0) {
+            const allRooms = Array.from(this.rooms.keys());
+            bossCandidates = allRooms.filter(id => distances.get(id) > 1);
+        }
+
+        // 거리순 내림차순 정렬
+        bossCandidates.sort((a, b) => distances.get(b) - distances.get(a));
+
+        if (bossCandidates.length > 0) {
+            this.bossRoom = bossCandidates[0];
             const room = this.rooms.get(this.bossRoom);
             room.type = 'boss';
             this.grid[this.bossRoom].type = 'boss';
-            // 보스방은 endRooms에서 제거
-            this.endRooms.pop();
+
+            // 보스방은 endRooms에서 제거 (중복 방지)
+            const index = this.endRooms.indexOf(this.bossRoom);
+            if (index !== -1) {
+                this.endRooms.splice(index, 1);
+            }
         }
 
         // 보물방: 시작 방의 이웃 중 하나를 보물방으로 지정 (테스트용)
@@ -153,19 +193,25 @@ class DungeonGenerator {
         if (startNode && startNode.neighbors.length > 0) {
             // 랜덤하게 이웃 선택
             const neighborId = startNode.neighbors[Math.floor(Math.random() * startNode.neighbors.length)];
-            this.treasureRoom = neighborId;
+            // 보스방이 아닌 경우에만
+            if (neighborId !== this.bossRoom) {
+                this.treasureRoom = neighborId;
 
-            const room = this.rooms.get(this.treasureRoom);
-            room.type = 'treasure';
-            this.grid[this.treasureRoom].type = 'treasure';
+                const room = this.rooms.get(this.treasureRoom);
+                room.type = 'treasure';
+                this.grid[this.treasureRoom].type = 'treasure';
 
-            // 혹시 이 방이 endRooms에 있었다면 제거 (중복 방지)
-            const endRoomIndex = this.endRooms.indexOf(neighborId);
-            if (endRoomIndex !== -1) {
-                this.endRooms.splice(endRoomIndex, 1);
+                // 혹시 이 방이 endRooms에 있었다면 제거 (중복 방지)
+                const endRoomIndex = this.endRooms.indexOf(neighborId);
+                if (endRoomIndex !== -1) {
+                    this.endRooms.splice(endRoomIndex, 1);
+                }
             }
-        } else if (this.endRooms.length > 0) {
-            // 폴백: 시작 방 이웃이 없으면 기존 로직대로 막다른 방에 배치
+        }
+
+        // 보물방이 아직 설정되지 않았다면 (시작방 이웃이 모두 보스방이거나 등등)
+        if (!this.treasureRoom && this.endRooms.length > 0) {
+            // 남은 막다른 방 중 하나 선택
             const index = Math.floor(Math.random() * this.endRooms.length);
             this.treasureRoom = this.endRooms[index];
             const room = this.rooms.get(this.treasureRoom);
@@ -174,10 +220,10 @@ class DungeonGenerator {
             this.endRooms.splice(index, 1);
         }
 
-        // 상점: 시작 방의 이웃 중 보물방이 아닌 곳에 배치
+        // 상점: 시작 방의 이웃 중 보물방/보스방이 아닌 곳에 배치
         if (startNode && startNode.neighbors.length > 0) {
-            // 보물방이 아닌 이웃 찾기
-            const availableNeighbors = startNode.neighbors.filter(id => id !== this.treasureRoom);
+            // 보물방, 보스방이 아닌 이웃 찾기
+            const availableNeighbors = startNode.neighbors.filter(id => id !== this.treasureRoom && id !== this.bossRoom);
 
             if (availableNeighbors.length > 0) {
                 const neighborId = availableNeighbors[Math.floor(Math.random() * availableNeighbors.length)];
@@ -192,16 +238,12 @@ class DungeonGenerator {
                 if (endRoomIndex !== -1) {
                     this.endRooms.splice(endRoomIndex, 1);
                 }
-            } else if (this.endRooms.length > 0) {
-                // 폴백: 이웃이 꽉 찼으면 막다른 방에 배치
-                const index = Math.floor(Math.random() * this.endRooms.length);
-                this.shopRoom = this.endRooms[index];
-                const room = this.rooms.get(this.shopRoom);
-                room.type = 'shop';
-                this.grid[this.shopRoom].type = 'shop';
-                this.endRooms.splice(index, 1);
             }
-        } else if (this.endRooms.length > 0) {
+        }
+
+        // 상점이 아직 설정되지 않았다면
+        if (!this.shopRoom && this.endRooms.length > 0) {
+            // 남은 막다른 방 중 하나 선택
             const index = Math.floor(Math.random() * this.endRooms.length);
             this.shopRoom = this.endRooms[index];
             const room = this.rooms.get(this.shopRoom);
