@@ -149,13 +149,25 @@ class Game {
 
     init() {
         // 게임 초기화 로직
+        this.level = 1; // 1스테이지부터 시작
         this.player = new Player(this.canvas.width / 2, this.canvas.height / 2);
         this.projectiles = [];
         this.enemies = [];
         this.items = [];
+        this.activeItems = [];
+        this.stars = [];
 
         // 방 상태 저장소 (방 ID -> { room, enemies, items, projectiles })
         this.roomStates = new Map();
+
+        // 방 전환 상태 초기화
+        this.isTransitioning = false;
+        this.transitionTimer = 0;
+        this.nextRoomDirection = null;
+        this.transitionCooldown = 0;
+
+        // 카메라 초기화
+        this.camera = { x: 0, y: 0 };
 
         // 던전 생성
         const generator = new DungeonGenerator(this.level);
