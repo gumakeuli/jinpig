@@ -65,12 +65,28 @@ class Item {
                 };
                 break;
             case 'lilith_body':
-                this.name = '릴리스의 몸통';
-                this.description = '최대 체력이 1 증가합니다.';
+                this.name = '릴리바이스의 바디';
+                this.description = '모든 능력치가 1 증가합니다.';
                 this.color = '#ff00ff';
                 this.effect = (player) => {
-                    player.maxHealth += 1;
-                    player.heal(1);
+                    // 최대 체력 증가 (상한선 적용)
+                    if (player.maxHealth < player.maxHealthCap) {
+                        player.maxHealth += 1;
+                        player.health += 1; // 늘어난 만큼 회복
+                    }
+                    // 공격력 증가
+                    if (player.damage < player.damageCap) {
+                        player.damage += 1;
+                    }
+                    // 공격속도 증가
+                    if (player.attackSpeed < player.attackSpeedCap) {
+                        player.attackSpeed += 1;
+                        player.updateFireRate(); // 공격속도 변경 반영
+                    }
+                    // 행운 증가
+                    if (player.luck < player.luckCap) {
+                        player.luck += 1;
+                    }
                 };
                 break;
             case 'mystery_item':
