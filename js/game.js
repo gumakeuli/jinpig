@@ -156,6 +156,7 @@ class Game {
         this.items = [];
         this.activeItems = [];
         this.stars = [];
+        this.portal = null;
 
         // 방 상태 저장소 (방 ID -> { room, enemies, items, projectiles })
         this.roomStates = new Map();
@@ -261,8 +262,8 @@ class Game {
         let roomHeight = this.canvas.height;
 
         if (roomType === 'boss') {
-            roomWidth = this.canvas.width * 2;
-            roomHeight = this.canvas.height * 2;
+            roomWidth = this.canvas.width * 1.5;
+            roomHeight = this.canvas.height * 1.5;
         }
 
         // 새 방 생성
@@ -462,10 +463,13 @@ class Game {
             // 3스테이지 클리어 - 게임 클리어
             this.onGameComplete();
         } else {
-            // 다음 스테이지로
-            setTimeout(() => {
-                this.nextStage();
-            }, 2000); // 2초 후 전환
+            // 다음 스테이지로 가는 포탈 생성
+            // 보스방 중앙에 생성
+            const roomWidth = this.room ? this.room.canvasWidth : this.canvas.width;
+            const roomHeight = this.room ? this.room.canvasHeight : this.canvas.height;
+
+            this.portal = new Portal(roomWidth / 2, roomHeight / 2);
+            console.log("포탈 생성됨!");
         }
     }
 
@@ -692,8 +696,11 @@ class Game {
         }
 
         // 발사체 업데이트
+        const roomWidth = this.room ? this.room.canvasWidth : this.canvas.width;
+        const roomHeight = this.room ? this.room.canvasHeight : this.canvas.height;
+
         for (let i = this.projectiles.length - 1; i >= 0; i--) {
-            this.projectiles[i].update(deltaTime, this.canvas.width, this.canvas.height);
+            this.projectiles[i].update(deltaTime, roomWidth, roomHeight);
 
             // 벽 충돌 체크
             if (this.room && this.room.checkProjectileWallCollision(this.projectiles[i])) {
@@ -804,6 +811,26 @@ class Game {
             }
         }
 
+        // 포탈 업데이트 및 충돌 체크
+        if (this.portal && this.portal.active) {
+            this.portal.update(deltaTime);
+
+            // 플레이어와 포탈 충돌 체크
+            const portalBounds = this.portal.getBounds();
+            const playerBounds = {
+                x: this.player.x - this.player.width / 2,
+                y: this.player.y - this.player.height / 2,
+                width: this.player.width,
+                height: this.player.height
+            };
+
+            if (checkCollision(playerBounds, portalBounds)) {
+                console.log("포탈 진입!");
+                this.portal.active = false;
+                this.nextStage();
+            }
+        }
+
         // 적을 모두 처치하면 문 열기
         if (this.room && this.room.hasEnemies && this.enemies.length === 0) {
             this.room.openAllDoors();
@@ -814,9 +841,11 @@ class Game {
                 if (roomData) {
                     roomData.cleared = true;
 
-                    // 보스방 클리어 시 다음 스테이지로
+                    // 보스방 클리어 시 포탈 생성
                     if (roomData.type === 'boss' && this.currentRoomId === this.dungeon.bossRoom) {
-                        this.onBossCleared();
+                        if (!this.portal) {
+                            this.onBossCleared();
+                        }
                     }
                 }
             }
@@ -1027,6 +1056,11 @@ class Game {
         // 별의 소리 그리기
         for (const star of this.stars) {
             star.draw(this.ctx);
+        }
+
+        // 포탈 그리기
+        if (this.portal && this.portal.active) {
+            this.portal.draw(this.ctx);
         }
 
         // 장애물 그리기 (플레이어보다 뒤에 있는 것)
