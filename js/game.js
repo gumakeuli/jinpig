@@ -456,6 +456,14 @@ class Game {
     // 적 생성 헬퍼 함수
     spawnEnemy(x, y, type = 'basic') {
         const enemy = new Enemy(x, y, type);
+
+        // 2스테이지 난이도 증가 (체력 1.5배, 데미지 1.5배)
+        if (this.level === 2) {
+            enemy.maxHealth = Math.ceil(enemy.maxHealth * 1.5);
+            enemy.health = enemy.maxHealth;
+            enemy.damage = Math.ceil(enemy.damage * 1.5);
+        }
+
         enemy.setTarget(this.player);
         this.enemies.push(enemy);
     }
@@ -494,6 +502,15 @@ class Game {
         // 스테이지 텍스트 표시
         this.showStageText = true;
         this.stageTextTimer = 0;
+
+        // 방 상태 초기화 (새 던전)
+        this.roomStates.clear();
+        this.portal = null;
+        this.projectiles = [];
+        this.enemies = [];
+        this.items = [];
+        this.activeItems = []; // 플레이어 아이템(Slash)도 초기화될 수 있음. 주의.
+        // Slash는 activeItems에 들어가는데, 플레이어가 다시 사용하면 생성되므로 초기화해도 됨.
 
         // 새 던전 생성
         const generator = new DungeonGenerator(this.level);
