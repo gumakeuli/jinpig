@@ -89,6 +89,11 @@ class Enemy {
         // 발사 타이머 (보스용)
         this.shootTimer = 0;
         this.shootInterval = 2.0;
+
+        // 소환 대기 (보스 제외)
+        this.isSpawning = type !== 'boss';
+        this.spawnTimer = 0;
+        this.spawnDuration = 1.5; // 1.5초 대기
     }
 
     // 타겟 설정
@@ -99,6 +104,15 @@ class Enemy {
     // 업데이트
     update(deltaTime, game) {
         if (!this.target || !this.active) return;
+
+        // 소환 대기 중
+        if (this.isSpawning) {
+            this.spawnTimer += deltaTime;
+            if (this.spawnTimer >= this.spawnDuration) {
+                this.isSpawning = false;
+            }
+            return; // 행동 하지 않음
+        }
 
         // 플레이어를 향해 이동
         const dx = this.target.x - this.x;
@@ -168,6 +182,25 @@ class Enemy {
 
     // 그리기
     draw(ctx) {
+        // 소환 대기 중 표시
+        if (this.isSpawning) {
+            ctx.save();
+            ctx.translate(this.x, this.y + this.height / 2);
+
+            // 붉은색 원 (점점 커짐)
+            const progress = this.spawnTimer / this.spawnDuration;
+            const scale = 0.5 + progress * 0.5;
+
+            ctx.scale(scale, scale * 0.5); // 타원형
+            ctx.beginPath();
+            ctx.arc(0, 0, this.width / 2, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
+            ctx.fill();
+
+            ctx.restore();
+            return;
+        }
+
         // 이미지가 로드되었으면 이미지로, 아니면 사각형으로
         if (this.imageLoaded) {
             ctx.drawImage(
@@ -208,6 +241,8 @@ class Enemy {
 
     // 데미지 받기
     takeDamage(amount) {
+        if (this.isSpawning) return false;
+
         this.health -= amount;
         this.hitFlash = 1;
 

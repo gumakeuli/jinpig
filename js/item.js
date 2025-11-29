@@ -66,7 +66,7 @@ class Item {
                 break;
             case 'lilith_body':
                 this.name = '릴리바이스의 바디';
-                this.description = '모든 능력치가 1 증가합니다.';
+                this.description = '갓데스 스쿼드를 위해서';
                 this.color = '#ff00ff';
                 this.effect = (player) => {
                     // 최대 체력 증가 (상한선 적용)
