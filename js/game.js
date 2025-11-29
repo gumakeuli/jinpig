@@ -363,10 +363,19 @@ class Game {
             this.room.openAllDoors();
         } else if (hasEnemies) {
             // 일반 전투 방
-            this.spawnEnemy(200, 150, 'basic');
-            this.spawnEnemy(600, 150, 'basic');
-            this.spawnEnemy(400, 120, 'fast');
-            this.spawnEnemy(150, 400, 'tank');
+            if (this.level === 1) {
+                this.spawnEnemy(200, 150, 'basic');
+                this.spawnEnemy(600, 150, 'basic');
+                this.spawnEnemy(400, 120, 'fast');
+                this.spawnEnemy(150, 400, 'tank');
+            } else if (this.level >= 2) {
+                // 2스테이지: 더 어렵게
+                this.spawnEnemy(200, 150, 'fast');
+                this.spawnEnemy(600, 150, 'fast');
+                this.spawnEnemy(400, 120, 'tank');
+                this.spawnEnemy(150, 400, 'tank');
+                this.spawnEnemy(300, 300, 'basic');
+            }
 
             // 적이 있는 방은 문을 닫음
             this.room.closeAllDoors();
