@@ -426,7 +426,12 @@ class Enemy {
                     const dashDx = this.dashTarget.x - this.x;
                     const dashDy = this.dashTarget.y - this.y;
                     const dashDist = Math.sqrt(dashDx * dashDx + dashDy * dashDy);
-                    this.dashDir = { x: dashDx / dashDist, y: dashDy / dashDist };
+
+                    if (dashDist > 0) {
+                        this.dashDir = { x: dashDx / dashDist, y: dashDy / dashDist };
+                    } else {
+                        this.dashDir = { x: 0, y: 0 };
+                    }
                 }
                 break;
 

@@ -333,7 +333,9 @@ class Game {
             // 아이템 목록
             const items = [
                 { type: 'lilith_body', image: 'assets/images/items/1.png' },
-                { type: 'mystery_item', image: 'assets/images/items/3.png' }
+                { type: 'mystery_item', image: 'assets/images/items/3.png' },
+                { type: 'soda_komibol', image: 'assets/images/2.jpg' },
+                { type: 'montelli_gun', image: 'assets/images/5.png' }
             ];
 
             // 이미 획득한 아이템 제외
