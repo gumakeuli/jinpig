@@ -89,8 +89,7 @@ class Enemy {
                 this.width = 40;
                 this.height = 40;
                 this.starDropTable = [
-                    { count: 0, chance: 0.8 },
-                    { count: 1, chance: 0.2 }
+                    { count: 0, chance: 1.0 }
                 ];
                 this.imageIdle.src = 'assets/images/boss/2.jpg';
                 break;
