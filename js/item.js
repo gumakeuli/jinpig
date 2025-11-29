@@ -98,6 +98,15 @@ class Item {
                     console.log('플뢰르 드 리스의 검(베기) 장착!');
                 };
                 break;
+            case 'soda_komibol':
+                this.name = '소다맛 꼬미볼';
+                this.description = '소다맛이 난다';
+                this.color = '#00ffff'; // 소다색 (Cyan)
+                this.effect = (player) => {
+                    player.hasSodaKomibol = true;
+                    console.log('소다맛 꼬미볼 획득!');
+                };
+                break;
             default:
                 this.name = '알 수 없는 아이템';
                 this.description = '효과 없음';

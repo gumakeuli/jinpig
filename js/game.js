@@ -919,6 +919,15 @@ class Game {
                             this.gameOver();
                         }
                     }
+
+                    // 소다맛 꼬미볼 효과 (적 속도 증가)
+                    if (this.player.hasSodaKomibol && enemy.active) {
+                        if (enemy.speedMultiplier < 1.5) {
+                            enemy.speedMultiplier = Math.min(enemy.speedMultiplier + 0.3, 1.5);
+                            enemy.speed = enemy.baseSpeed * enemy.speedMultiplier;
+                        }
+                    }
+
                     projectile.active = false;
                 }
             } else {
@@ -958,8 +967,20 @@ class Game {
 
                     if (item.checkCollision(enemy)) {
                         // 적이 데미지를 받음
-                        enemy.takeDamage(item.damage);
+                        if (enemy.takeDamage(item.damage)) {
+                            // 처치 시
+                            this.score += 10;
+                            this.updateScore();
+                        }
                         item.hitEnemies.push(enemy);
+
+                        // 소다맛 꼬미볼 효과 (적 속도 증가)
+                        if (this.player.hasSodaKomibol && enemy.active) {
+                            if (enemy.speedMultiplier < 1.5) {
+                                enemy.speedMultiplier = Math.min(enemy.speedMultiplier + 0.3, 1.5);
+                                enemy.speed = enemy.baseSpeed * enemy.speedMultiplier;
+                            }
+                        }
 
                         // 넉백 효과 (보스 제외)
                         if (enemy.type !== 'boss') {

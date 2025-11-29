@@ -92,6 +92,9 @@ class Player {
         this.itemMaxCooldown = 2; // 2초 쿨다운 (후딜레이 증가)
 
         this.keys.space = false;
+
+        // 아이템 효과 플래그
+        this.hasSodaKomibol = false;
     }
 
     // 입력 처리

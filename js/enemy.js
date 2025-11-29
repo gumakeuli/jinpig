@@ -96,6 +96,12 @@ class Enemy {
                 break;
         }
 
+
+
+        // 속도 관련 변수 (소다맛 꼬미볼 효과용)
+        this.baseSpeed = this.speed;
+        this.speedMultiplier = 1.0;
+
         this.health = this.maxHealth;
 
         // AI 상태
