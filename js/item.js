@@ -59,7 +59,7 @@ class Item {
                 this.name = '회복 포션';
                 this.description = '체력을 1 회복합니다.';
                 this.color = '#ff0000';
-                this.price = 15;
+                this.price = 7;
                 this.effect = (player) => {
                     player.heal(1);
                 };

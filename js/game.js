@@ -873,7 +873,16 @@ class Game {
             if (this.dungeon && this.currentRoomId !== null) {
                 const roomData = this.dungeon.rooms.get(this.currentRoomId);
                 if (roomData) {
-                    roomData.cleared = true;
+                    if (!roomData.cleared) {
+                        roomData.cleared = true;
+
+                        // 방 클리어 보상 (별의 소리 1~3개)
+                        const rewardCount = Math.floor(Math.random() * 3) + 1;
+                        for (let i = 0; i < rewardCount; i++) {
+                            // 플레이어 주변에 드롭
+                            this.spawnStar(this.player.x + (Math.random() - 0.5) * 50, this.player.y + (Math.random() - 0.5) * 50);
+                        }
+                    }
 
                     // 보스방 클리어 시 포탈 생성
                     if (roomData.type === 'boss' && this.currentRoomId === this.dungeon.bossRoom) {
