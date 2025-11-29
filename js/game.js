@@ -157,6 +157,7 @@ class Game {
         this.activeItems = [];
         this.stars = [];
         this.portal = null;
+        this.collectedItems = new Set();
 
         // 방 상태 저장소 (방 ID -> { room, enemies, items, projectiles })
         this.roomStates = new Map();
@@ -335,11 +336,19 @@ class Game {
                 { type: 'mystery_item', image: 'assets/images/items/3.png' }
             ];
 
-            // 랜덤 선택
-            const randomItem = items[Math.floor(Math.random() * items.length)];
+            // 이미 획득한 아이템 제외
+            const availableItems = items.filter(item => !this.collectedItems.has(item.type));
 
-            // 아이템 생성 (캐시 방지를 위한 타임스탬프 추가)
-            this.spawnItem(centerX, centerY, randomItem.type, `${randomItem.image}?t=${Date.now()}`);
+            if (availableItems.length > 0) {
+                // 랜덤 선택
+                const randomItem = availableItems[Math.floor(Math.random() * availableItems.length)];
+
+                // 아이템 생성 (캐시 방지를 위한 타임스탬프 추가)
+                this.spawnItem(centerX, centerY, randomItem.type, `${randomItem.image}?t=${Date.now()}`);
+            } else {
+                // 모든 아이템을 획득했으면 회복 포션 생성
+                this.spawnItem(centerX, centerY, 'potion', 'assets/images/items/16.png');
+            }
 
             // 모든 문 열기 (장애물 없음)
             this.room.openAllDoors();
@@ -990,6 +999,7 @@ class Game {
 
                         // 아이템 효과 적용
                         item.apply(this.player);
+                        this.collectedItems.add(item.type);
                         console.log(`${item.name} 구매 완료! 잔액: ${this.starCount}`);
                     } else {
                         // 구매 실패 (돈 부족)
@@ -1006,6 +1016,9 @@ class Game {
                     // 아이템 효과 적용
                     item.apply(this.player);
                     this.updateScore(5); // 아이템 획득 점수
+
+                    // 획득한 아이템 기록
+                    this.collectedItems.add(item.type);
                 }
             }
         }
