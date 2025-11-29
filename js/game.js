@@ -1006,6 +1006,9 @@ class Game {
 
         // 플레이어 vs 적 충돌
         for (const enemy of this.enemies) {
+            // 소환 중인 적은 데미지를 주지 않음
+            if (enemy.isSpawning) continue;
+
             const enemyBounds = enemy.getBounds();
 
             if (checkCollision(playerBounds, enemyBounds)) {
