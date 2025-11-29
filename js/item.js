@@ -107,6 +107,19 @@ class Item {
                     console.log('소다맛 꼬미볼 획득!');
                 };
                 break;
+            case 'montelli_gun':
+                this.name = '몬텔리의 총';
+                this.description = '전용무기인 것 같다';
+                this.color = '#ccffff'; // 오팔색
+                this.effect = (player) => {
+                    player.hasMontelliGun = true;
+                    // 공격력 1 증가 (상한선 체크)
+                    if (player.damage < player.damageCap) {
+                        player.damage += 1;
+                    }
+                    console.log('몬텔리의 총 획득!');
+                };
+                break;
             default:
                 this.name = '알 수 없는 아이템';
                 this.description = '효과 없음';

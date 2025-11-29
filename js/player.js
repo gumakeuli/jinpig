@@ -95,6 +95,7 @@ class Player {
 
         // 아이템 효과 플래그
         this.hasSodaKomibol = false;
+        this.hasMontelliGun = false;
     }
 
     // 입력 처리

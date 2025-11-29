@@ -683,6 +683,12 @@ class Game {
                         dir.y,
                         this.player.damage
                     );
+
+                    // 몬텔리의 총 효과 (오팔 총)
+                    if (this.player.hasMontelliGun) {
+                        projectile.isOpal = true;
+                    }
+
                     this.projectiles.push(projectile);
                     this.player.fire(currentTime);
 
