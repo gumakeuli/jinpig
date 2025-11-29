@@ -72,8 +72,27 @@ class Enemy {
                 this.starDropTable = [
                     { count: 10, chance: 1.0 }
                 ];
-                // 보스 이미지 (임시)
-                this.imageIdle.src = 'assets/images/12.png';
+                // 보스 이미지
+                this.imageIdle.src = 'assets/images/boss/1.jpg';
+
+                // 보스 AI 상태
+                this.aiState = 'idle'; // idle, warning, dash, summon, shoot
+                this.aiTimer = 0;
+                this.patternTimer = 2.0; // 패턴 간격
+                this.dashTarget = { x: 0, y: 0 };
+                break;
+            case 'boss_minion':
+                this.speed = 90;
+                this.maxHealth = 2;
+                this.damage = 1;
+                this.color = '#ff00ff';
+                this.width = 40;
+                this.height = 40;
+                this.starDropTable = [
+                    { count: 0, chance: 0.8 },
+                    { count: 1, chance: 0.2 }
+                ];
+                this.imageIdle.src = 'assets/images/boss/2.jpg';
                 break;
         }
 
@@ -86,7 +105,7 @@ class Enemy {
         // 피격 효과
         this.hitFlash = 0;
 
-        // 발사 타이머 (보스용)
+        // 발사 타이머 (보스용 - 구버전 호환 위해 남겨두거나 제거)
         this.shootTimer = 0;
         this.shootInterval = 2.0;
 
@@ -112,6 +131,12 @@ class Enemy {
                 this.isSpawning = false;
             }
             return; // 행동 하지 않음
+        }
+
+        // 보스 AI
+        if (this.type === 'boss') {
+            this.updateBossAI(deltaTime, game);
+            return;
         }
 
         // 플레이어를 향해 이동
@@ -229,6 +254,26 @@ class Enemy {
             return;
         }
 
+        // 보스 패턴 그리기 (돌진 경고 등)
+        if (this.type === 'boss') {
+            if (this.aiState === 'warning') {
+                ctx.save();
+                ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
+                ctx.lineWidth = 5;
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.y);
+                ctx.lineTo(this.dashTarget.x, this.dashTarget.y);
+                ctx.stroke();
+
+                // 목표 지점 표시
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
+                ctx.beginPath();
+                ctx.arc(this.dashTarget.x, this.dashTarget.y, 30, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
         // 이미지가 로드되었으면 이미지로, 아니면 사각형으로
         if (this.imageLoaded) {
             ctx.drawImage(
@@ -309,5 +354,102 @@ class Enemy {
         }
 
         return 0; // 기본값
+    }
+
+    // 보스 AI 업데이트
+    updateBossAI(deltaTime, game) {
+        // 쿨타임 감소
+        if (this.aiTimer > 0) {
+            this.aiTimer -= deltaTime;
+        }
+
+        switch (this.aiState) {
+            case 'idle':
+                // 플레이어 향해 천천히 이동
+                const dx = this.target.x - this.x;
+                const dy = this.target.y - this.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist > 0) {
+                    this.x += (dx / dist) * this.speed * 0.5 * deltaTime;
+                    this.y += (dy / dist) * this.speed * 0.5 * deltaTime;
+                }
+
+                // 패턴 선택
+                if (this.aiTimer <= 0) {
+                    const rand = Math.random();
+                    if (rand < 0.4) {
+                        // 40% 확률: 발사
+                        this.aiState = 'shoot';
+                    } else if (rand < 0.7) {
+                        // 30% 확률: 돌진
+                        this.aiState = 'warning';
+                        this.aiTimer = 1.0; // 1초 경고
+                        this.dashTarget = { x: this.target.x, y: this.target.y };
+                    } else {
+                        // 30% 확률: 소환
+                        this.aiState = 'summon';
+                    }
+                }
+                break;
+
+            case 'shoot':
+                // 8방향 발사
+                const directions = [
+                    { x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 },
+                    { x: 0.7, y: 0.7 }, { x: 0.7, y: -0.7 }, { x: -0.7, y: 0.7 }, { x: -0.7, y: -0.7 }
+                ];
+
+                for (const dir of directions) {
+                    const projectile = new Projectile(this.x, this.y, dir.x, dir.y, this.damage);
+                    projectile.isEnemy = true;
+                    projectile.color = '#ff00ff';
+                    game.projectiles.push(projectile);
+                }
+
+                this.aiState = 'idle';
+                this.aiTimer = 2.0; // 2초 쿨타임
+                break;
+
+            case 'warning':
+                // 경고 상태 (그리기에서 처리)
+                if (this.aiTimer <= 0) {
+                    this.aiState = 'dash';
+                    this.aiTimer = 0.5; // 0.5초 돌진
+
+                    // 돌진 방향 계산
+                    const dashDx = this.dashTarget.x - this.x;
+                    const dashDy = this.dashTarget.y - this.y;
+                    const dashDist = Math.sqrt(dashDx * dashDx + dashDy * dashDy);
+                    this.dashDir = { x: dashDx / dashDist, y: dashDy / dashDist };
+                }
+                break;
+
+            case 'dash':
+                // 돌진
+                const dashSpeed = 400;
+                this.x += this.dashDir.x * dashSpeed * deltaTime;
+                this.y += this.dashDir.y * dashSpeed * deltaTime;
+
+                if (this.aiTimer <= 0) {
+                    this.aiState = 'idle';
+                    this.aiTimer = 2.0; // 2초 쿨타임
+                }
+                break;
+
+            case 'summon':
+                // 쫄몹 소환 (3마리)
+                for (let i = 0; i < 3; i++) {
+                    const angle = (Math.PI * 2 / 3) * i;
+                    const spawnDist = 100;
+                    const sx = this.x + Math.cos(angle) * spawnDist;
+                    const sy = this.y + Math.sin(angle) * spawnDist;
+
+                    game.spawnEnemy(sx, sy, 'boss_minion');
+                }
+
+                this.aiState = 'idle';
+                this.aiTimer = 3.0; // 3초 쿨타임
+                break;
+        }
     }
 }
