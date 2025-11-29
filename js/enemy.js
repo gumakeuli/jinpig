@@ -120,13 +120,41 @@ class Enemy {
         const distance = Math.sqrt(dx * dx + dy * dy);
 
         if (distance > 0) {
-            // 정규화된 방향
-            const dirX = dx / distance;
-            const dirY = dy / distance;
+            // 플레이어를 향해 이동 (기본 방향)
+            let moveX = dx;
+            let moveY = dy;
 
-            // 이동
-            this.x += dirX * this.speed * deltaTime;
-            this.y += dirY * this.speed * deltaTime;
+            // 장애물 회피 (Repulsion Force)
+            if (game.room && game.room.obstacles) {
+                const avoidanceRadius = 80; // 회피 반경
+                const avoidanceWeight = 300; // 회피 가중치
+
+                for (const obstacle of game.room.obstacles) {
+                    if (!obstacle.active || !obstacle.blocksMovement) continue;
+
+                    const obsDx = this.x - obstacle.x;
+                    const obsDy = this.y - obstacle.y;
+                    const obsDist = Math.sqrt(obsDx * obsDx + obsDy * obsDy);
+
+                    if (obsDist < avoidanceRadius && obsDist > 0) {
+                        // 장애물에서 멀어지는 힘 추가 (거리가 가까울수록 강하게)
+                        const force = (avoidanceRadius - obsDist) / avoidanceRadius;
+                        moveX += (obsDx / obsDist) * force * avoidanceWeight;
+                        moveY += (obsDy / obsDist) * force * avoidanceWeight;
+                    }
+                }
+            }
+
+            // 최종 방향 정규화
+            const moveDist = Math.sqrt(moveX * moveX + moveY * moveY);
+            if (moveDist > 0) {
+                const dirX = moveX / moveDist;
+                const dirY = moveY / moveDist;
+
+                // 이동
+                this.x += dirX * this.speed * deltaTime;
+                this.y += dirY * this.speed * deltaTime;
+            }
 
             // 보스 패턴: 발사
             if (this.type === 'boss' && game) {
