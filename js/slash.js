@@ -6,7 +6,7 @@ class Slash {
         this.damage = damage;
         this.active = true;
 
-        this.lifetime = 0.5; // 0.5초 지속 (느리게)
+        this.lifetime = 1.0; // 1.0초 지속 (후딜레이 증가)
         this.timer = 0;
 
         this.width = 100; // 검 길이

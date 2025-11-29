@@ -686,7 +686,7 @@ class Game {
                         this.player.x,
                         this.player.y,
                         angle, // 방향 문자열 대신 각도 전달
-                        this.player.damage * 2
+                        1 + this.player.damage * 1.5
                     );
                     this.activeItems.push(slash);
                     this.player.useItem();
@@ -932,14 +932,16 @@ class Game {
                         enemy.takeDamage(item.damage);
                         item.hitEnemies.push(enemy);
 
-                        // 넉백 효과
-                        const dx = enemy.x - this.player.x;
-                        const dy = enemy.y - this.player.y;
-                        const distance = Math.sqrt(dx * dx + dy * dy);
-                        if (distance > 0) {
-                            const knockbackForce = 100;
-                            enemy.x += (dx / distance) * knockbackForce;
-                            enemy.y += (dy / distance) * knockbackForce;
+                        // 넉백 효과 (보스 제외)
+                        if (enemy.type !== 'boss') {
+                            const dx = enemy.x - this.player.x;
+                            const dy = enemy.y - this.player.y;
+                            const distance = Math.sqrt(dx * dx + dy * dy);
+                            if (distance > 0) {
+                                const knockbackForce = 30; // 넉백 감소 (100 -> 30)
+                                enemy.x += (dx / distance) * knockbackForce;
+                                enemy.y += (dy / distance) * knockbackForce;
+                            }
                         }
                     }
                 }

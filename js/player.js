@@ -89,7 +89,7 @@ class Player {
         // 사용 아이템
         this.activeItem = null; // 'slash' 등
         this.itemCooldown = 0;
-        this.itemMaxCooldown = 1; // 1초 쿨다운
+        this.itemMaxCooldown = 2; // 2초 쿨다운 (후딜레이 증가)
 
         this.keys.space = false;
     }
