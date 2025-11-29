@@ -938,11 +938,8 @@ class Game {
                     }
 
                     // 소다맛 꼬미볼 효과 (적 속도 증가)
-                    if (this.player.hasSodaKomibol && enemy.active) {
-                        if (enemy.speedMultiplier < 1.5) {
-                            enemy.speedMultiplier = Math.min(enemy.speedMultiplier + 0.3, 1.5);
-                            enemy.speed = enemy.baseSpeed * enemy.speedMultiplier;
-                        }
+                    if (this.player.hasSodaKomibol && enemy.active && enemy.type !== 'boss') {
+                        enemy.speedBoostTimer = 0.8; // 0.8초 동안 속도 증가
                     }
 
                     projectile.active = false;
@@ -992,11 +989,8 @@ class Game {
                         item.hitEnemies.push(enemy);
 
                         // 소다맛 꼬미볼 효과 (적 속도 증가)
-                        if (this.player.hasSodaKomibol && enemy.active) {
-                            if (enemy.speedMultiplier < 1.5) {
-                                enemy.speedMultiplier = Math.min(enemy.speedMultiplier + 0.3, 1.5);
-                                enemy.speed = enemy.baseSpeed * enemy.speedMultiplier;
-                            }
+                        if (this.player.hasSodaKomibol && enemy.active && enemy.type !== 'boss') {
+                            enemy.speedBoostTimer = 0.8; // 0.8초 동안 속도 증가
                         }
 
                         // 넉백 효과 (보스 제외)

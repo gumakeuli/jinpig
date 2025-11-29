@@ -100,7 +100,10 @@ class Enemy {
 
         // 속도 관련 변수 (소다맛 꼬미볼 효과용)
         this.baseSpeed = this.speed;
+        // 속도 관련 변수 (소다맛 꼬미볼 효과용)
+        this.baseSpeed = this.speed;
         this.speedMultiplier = 1.0;
+        this.speedBoostTimer = 0; // 속도 증가 지속 시간
 
         this.health = this.maxHealth;
 
@@ -137,6 +140,14 @@ class Enemy {
                 this.isSpawning = false;
             }
             return; // 행동 하지 않음
+        }
+
+        // 속도 부스트 타이머 업데이트
+        if (this.speedBoostTimer > 0) {
+            this.speedBoostTimer -= deltaTime;
+            this.speed = this.baseSpeed * 1.5; // 50% 증가
+        } else {
+            this.speed = this.baseSpeed;
         }
 
         // 보스 AI
