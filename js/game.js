@@ -957,6 +957,8 @@ class Game {
                 // 플레이어 발사체 -> 적 충돌
                 for (let j = this.enemies.length - 1; j >= 0; j--) {
                     const enemy = this.enemies[j];
+                    if (enemy.isSpawning) continue; // 소환 중인 적은 무시
+
                     const enemyBounds = enemy.getBounds();
 
                     if (checkCollision(projBounds, enemyBounds)) {
@@ -975,6 +977,7 @@ class Game {
             if (item instanceof Slash && item.active) {
                 for (let j = this.enemies.length - 1; j >= 0; j--) {
                     const enemy = this.enemies[j];
+                    if (enemy.isSpawning) continue; // 소환 중인 적은 무시
 
                     // 이미 타격한 적은 제외해야 하지만, 
                     // 현재 구조상 매 프레임 체크하므로 넉백이나 무적시간으로 처리 필요
