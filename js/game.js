@@ -898,6 +898,9 @@ class Game {
                 if (checkCollision(projBounds, playerBounds)) {
                     if (this.player.takeDamage(projectile.damage)) {
                         // 피격 성공
+                        if (this.player.health <= 0) {
+                            this.gameOver();
+                        }
                     }
                     projectile.active = false;
                 }
@@ -972,6 +975,10 @@ class Game {
                         const knockbackForce = 50;
                         this.player.x += (dx / distance) * knockbackForce;
                         this.player.y += (dy / distance) * knockbackForce;
+                    }
+
+                    if (this.player.health <= 0) {
+                        this.gameOver();
                     }
                 }
             }
