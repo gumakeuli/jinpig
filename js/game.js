@@ -156,7 +156,9 @@ class Game {
         this.items = [];
         this.activeItems = [];
         this.stars = [];
+        this.particles = []; // 파티클 초기화
         this.portal = null;
+        this.altar = null; // 제단 초기화
         this.collectedItems = new Set();
 
         // 방 상태 저장소 (방 ID -> { room, enemies, items, projectiles })
@@ -523,7 +525,6 @@ class Game {
         this.portal = null;
         this.altar = null; // 제단 초기화
         this.projectiles = [];
-        this.enemies = [];
         this.enemies = [];
         this.items = [];
         this.particles = []; // 파티클 초기화
