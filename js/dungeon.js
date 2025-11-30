@@ -254,6 +254,32 @@ class DungeonGenerator {
             this.grid[this.shopRoom].type = 'shop';
             this.endRooms.splice(index, 1);
         }
+
+        // 제단(석상) 방: 남은 막다른 방이 있으면 배치, 없으면 랜덤 방
+        if (this.endRooms.length > 0) {
+            const index = Math.floor(Math.random() * this.endRooms.length);
+            this.altarRoom = this.endRooms[index];
+            const room = this.rooms.get(this.altarRoom);
+            room.type = 'altar';
+            this.grid[this.altarRoom].type = 'altar';
+            this.endRooms.splice(index, 1);
+        } else {
+            // 막다른 방이 없으면 일반 방 중에서 선택 (start, boss, treasure, shop 제외)
+            const availableRooms = Array.from(this.rooms.keys()).filter(id =>
+                id !== this.startRoom &&
+                id !== this.bossRoom &&
+                id !== this.treasureRoom &&
+                id !== this.shopRoom
+            );
+
+            if (availableRooms.length > 0) {
+                const index = Math.floor(Math.random() * availableRooms.length);
+                this.altarRoom = availableRooms[index];
+                const room = this.rooms.get(this.altarRoom);
+                room.type = 'altar';
+                this.grid[this.altarRoom].type = 'altar';
+            }
+        }
     }
 
     // Phase 3: 일반 방 타입 지정

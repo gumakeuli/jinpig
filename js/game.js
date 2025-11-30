@@ -361,6 +361,10 @@ class Game {
             this.items.push(potion);
 
             this.room.openAllDoors();
+        } else if (roomType === 'altar') {
+            // 제단 방
+            this.altar = new Altar(this.canvas.width / 2, this.canvas.height / 2);
+            this.room.openAllDoors();
         } else if (hasEnemies) {
             // 일반 전투 방
             if (this.level === 1) {
@@ -517,6 +521,7 @@ class Game {
         // 방 상태 초기화 (새 던전)
         this.roomStates.clear();
         this.portal = null;
+        this.altar = null; // 제단 초기화
         this.projectiles = [];
         this.enemies = [];
         this.enemies = [];
@@ -895,6 +900,19 @@ class Game {
             }
         }
 
+        // 제단 업데이트 및 상호작용
+        if (this.altar && this.altar.active) {
+            this.altar.update(deltaTime, this.player);
+
+            // 상호작용 (Space 키)
+            if (this.player.keys.space && !this.altar.used && this.altar.checkCollision(this.player)) {
+                if (this.altar.interact(this.player)) {
+                    // 효과음이나 파티클?
+                    this.spawnParticles(this.altar.x, this.altar.y, '#ffff00', 20);
+                }
+            }
+        }
+
         // 적을 모두 처치하면 문 열기
         if (this.room && this.room.hasEnemies && this.enemies.length === 0) {
             this.room.openAllDoors();
@@ -1180,6 +1198,11 @@ class Game {
         // 포탈 그리기
         if (this.portal && this.portal.active) {
             this.portal.draw(this.ctx);
+        }
+
+        // 제단 그리기
+        if (this.altar && this.altar.active) {
+            this.altar.draw(this.ctx);
         }
 
         // 장애물 그리기 (플레이어보다 뒤에 있는 것)
