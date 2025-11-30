@@ -363,7 +363,7 @@ class Game {
         } else if (roomType === 'shop') {
             // 상점
             const centerX = this.canvas.width / 2;
-            const centerY = this.canvas.height / 2 + 100; // 상점 주인 아래로 내림
+            const centerY = this.canvas.height / 2 + 180; // 상점 주인 아래로 더 내림
             const spacing = 150;
 
             // 1. 회복 포션 (가격 7)
