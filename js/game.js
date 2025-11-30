@@ -1328,8 +1328,13 @@ class Game {
             this.ctx.save();
             this.ctx.globalAlpha = alpha;
             this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-            this.ctx.roundRect(this.canvas.width / 2 - 200, 100, 400, 80, 10);
-            this.ctx.fill();
+            if (this.ctx.roundRect) {
+                this.ctx.beginPath();
+                this.ctx.roundRect(this.canvas.width / 2 - 200, 100, 400, 80, 10);
+                this.ctx.fill();
+            } else {
+                this.ctx.fillRect(this.canvas.width / 2 - 200, 100, 400, 80);
+            }
 
             this.ctx.fillStyle = '#fff';
             this.ctx.font = 'bold 24px Arial';
