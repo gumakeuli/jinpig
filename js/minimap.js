@@ -5,10 +5,11 @@ class Minimap {
         this.cellSize = 8; // 각 방의 크기 (픽셀)
         this.padding = 10;
 
-        // 우측 상단에 배치
+        // 우측 하단에 배치
         const mapWidth = this.dungeon.gridWidth * this.cellSize + 10;
+        const mapHeight = this.dungeon.gridHeight * this.cellSize + 10;
         this.x = canvasWidth - mapWidth - this.padding;
-        this.y = this.padding;
+        this.y = canvasHeight - mapHeight - this.padding;
 
         this.currentRoom = dungeon.startRoom;
     }
