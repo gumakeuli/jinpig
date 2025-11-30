@@ -225,6 +225,7 @@ class Game {
                 room: this.room,
                 enemies: this.enemies,
                 items: this.items,
+                altar: this.altar, // 제단 상태 저장
                 // 투사체는 저장하지 않음 (방 이동 시 제거)
                 visited: true
             });
@@ -247,6 +248,7 @@ class Game {
             this.room = state.room;
             this.enemies = state.enemies;
             this.items = state.items;
+            this.altar = state.altar; // 제단 상태 복원
             this.projectiles = []; // 투사체 초기화
         } else {
             // 새로운 방 로드
@@ -320,6 +322,7 @@ class Game {
         this.projectiles = [];
         this.enemies = [];
         this.items = [];
+        this.altar = null; // 제단 초기화 (기본값)
 
         // 방 타입별 처리
         if (roomType === 'boss') {
