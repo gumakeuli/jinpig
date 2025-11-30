@@ -519,7 +519,9 @@ class Game {
         this.portal = null;
         this.projectiles = [];
         this.enemies = [];
+        this.enemies = [];
         this.items = [];
+        this.particles = []; // 파티클 초기화
         this.activeItems = []; // 플레이어 아이템(Slash)도 초기화될 수 있음. 주의.
         // Slash는 activeItems에 들어가는데, 플레이어가 다시 사용하면 생성되므로 초기화해도 됨.
 
@@ -745,6 +747,13 @@ class Game {
         for (let i = this.projectiles.length - 1; i >= 0; i--) {
             this.projectiles[i].update(deltaTime, roomWidth, roomHeight);
 
+            // 오팔 총 효과 (이동 트레일)
+            if (this.projectiles[i].isOpal) {
+                if (Math.random() < 0.3) { // 30% 확률로 트레일 생성
+                    this.spawnParticles(this.projectiles[i].x, this.projectiles[i].y, '#ccffff', 1);
+                }
+            }
+
             // 벽 충돌 체크
             if (this.room && this.room.checkProjectileWallCollision(this.projectiles[i])) {
                 this.projectiles[i].active = false;
@@ -851,6 +860,18 @@ class Game {
             // 비활성 별 제거
             if (!this.stars[i].active) {
                 this.stars.splice(i, 1);
+            }
+            // 비활성 별 제거
+            if (!this.stars[i].active) {
+                this.stars.splice(i, 1);
+            }
+        }
+
+        // 파티클 업데이트
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            this.particles[i].update(deltaTime);
+            if (!this.particles[i].active) {
+                this.particles.splice(i, 1);
             }
         }
 
@@ -964,6 +985,13 @@ class Game {
                     if (checkCollision(projBounds, enemyBounds)) {
                         // 적이 데미지를 받음
                         enemy.takeDamage(projectile.damage);
+
+                        // 오팔 총 효과 (타격 이펙트)
+                        if (projectile.isOpal) {
+                            this.spawnParticles(projectile.x, projectile.y, '#ccffff', 10);
+                            this.spawnParticles(projectile.x, projectile.y, '#ffccff', 5);
+                        }
+
                         // 발사체 제거
                         projectile.active = false;
                         break;
@@ -1142,6 +1170,11 @@ class Game {
         // 별의 소리 그리기
         for (const star of this.stars) {
             star.draw(this.ctx);
+        }
+
+        // 파티클 그리기
+        for (const particle of this.particles) {
+            particle.draw(this.ctx);
         }
 
         // 포탈 그리기
