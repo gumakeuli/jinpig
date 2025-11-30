@@ -344,6 +344,11 @@ class Player {
         return true;
     }
 
+    // 체력 회복
+    heal(amount) {
+        this.health = Math.min(this.health + amount, this.maxHealth);
+    }
+
     // 공격속도에 따른 발사 간격 계산
     updateFireRate() {
         // 공격속도 1 = 0.8초 (800ms)
