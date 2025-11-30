@@ -1,6 +1,6 @@
 // 미니맵 클래스
 class Minimap {
-    constructor(dungeon, canvasWidth) {
+    constructor(dungeon, canvasWidth, canvasHeight) {
         this.dungeon = dungeon;
         this.cellSize = 8; // 각 방의 크기 (픽셀)
         this.padding = 10;

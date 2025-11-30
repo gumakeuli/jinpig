@@ -177,7 +177,7 @@ class Game {
         // 던전 생성
         const generator = new DungeonGenerator(this.level);
         this.dungeon = generator.generate();
-        this.minimap = new Minimap(this.dungeon, this.canvas.width);
+        this.minimap = new Minimap(this.dungeon, this.canvas.width, this.canvas.height);
 
         // 시작 방으로 이동
         this.currentRoomId = this.dungeon.startRoom;
@@ -573,7 +573,7 @@ class Game {
         // 새 던전 생성
         const generator = new DungeonGenerator(this.level);
         this.dungeon = generator.generate();
-        this.minimap = new Minimap(this.dungeon, this.canvas.width);
+        this.minimap = new Minimap(this.dungeon, this.canvas.width, this.canvas.height);
 
         // 시작 방으로 이동
         this.currentRoomId = this.dungeon.startRoom;
