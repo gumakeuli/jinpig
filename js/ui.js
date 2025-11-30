@@ -88,30 +88,38 @@ class UI {
         const size = this.heartSize;
         const halfSize = size / 2;
 
-        ctx.fillStyle = '#ff0000';
-        ctx.beginPath();
+        ctx.save();
 
+        // 그림자
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+        ctx.shadowBlur = 4;
+        ctx.shadowOffsetX = 2;
+        ctx.shadowOffsetY = 2;
+
+        // 그라데이션
+        const gradient = ctx.createLinearGradient(x, y, x, y + size);
+        gradient.addColorStop(0, '#ff6666');
+        gradient.addColorStop(1, '#cc0000');
+        ctx.fillStyle = gradient;
+
+        ctx.beginPath();
         // 왼쪽 원
         ctx.arc(x + halfSize / 2, y + halfSize / 2, halfSize / 2, 0, Math.PI * 2);
-        ctx.fill();
-
         // 오른쪽 원
-        ctx.beginPath();
         ctx.arc(x + halfSize + halfSize / 2, y + halfSize / 2, halfSize / 2, 0, Math.PI * 2);
-        ctx.fill();
-
         // 아래 삼각형
-        ctx.beginPath();
         ctx.moveTo(x, y + halfSize / 2);
         ctx.lineTo(x + halfSize, y + size);
         ctx.lineTo(x + size, y + halfSize / 2);
-        ctx.closePath();
         ctx.fill();
 
-        // 테두리
-        ctx.strokeStyle = '#990000';
-        ctx.lineWidth = 2;
+        // 테두리 (그림자 끄고)
+        ctx.shadowColor = 'transparent';
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.5;
         ctx.stroke();
+
+        ctx.restore();
     }
 
     // 빈 하트

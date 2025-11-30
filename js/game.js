@@ -172,6 +172,7 @@ class Game {
 
         // 카메라 초기화
         this.camera = { x: 0, y: 0 };
+        this.screenShake = { x: 0, y: 0, intensity: 0, duration: 0 };
 
         // 던전 생성
         const generator = new DungeonGenerator(this.level);
@@ -361,9 +362,41 @@ class Game {
             this.room.openAllDoors();
         } else if (roomType === 'shop') {
             // 상점
-            // 회복 포션 추가 (상점 주인 근처나 특정 위치에)
-            const potion = new Item(this.canvas.width / 2 - 150, this.canvas.height / 2 + 100, 'potion', 'assets/images/items/16.png');
+            const centerX = this.canvas.width / 2;
+            const centerY = this.canvas.height / 2;
+            const spacing = 150;
+
+            // 1. 회복 포션 (가격 7)
+            const potion = new Item(centerX - spacing, centerY, 'potion', 'assets/images/items/16.png');
+            potion.price = 7;
             this.items.push(potion);
+
+            // 2. 스탯 업그레이드 (릴리바이스의 바디) (가격 15)
+            const statUp = new Item(centerX, centerY, 'lilith_body', 'assets/images/items/1.png');
+            statUp.price = 15;
+            this.items.push(statUp);
+
+            // 3. 랜덤 장비 (가격 30)
+            const equipmentTypes = [
+                { type: 'mystery_item', image: 'assets/images/items/3.png' },
+                { type: 'soda_komibol', image: 'assets/images/items/2.jpg' },
+                { type: 'montelli_gun', image: 'assets/images/items/5.webp' }
+            ];
+
+            // 미보유 장비만 필터링
+            const availableEquip = equipmentTypes.filter(item => !this.collectedItems.has(item.type));
+
+            if (availableEquip.length > 0) {
+                const randomEquip = availableEquip[Math.floor(Math.random() * availableEquip.length)];
+                const equipItem = new Item(centerX + spacing, centerY, randomEquip.type, randomEquip.image);
+                equipItem.price = 30;
+                this.items.push(equipItem);
+            } else {
+                // 장비를 다 모았으면 포션 하나 더 (가격 7)
+                const extraPotion = new Item(centerX + spacing, centerY, 'potion', 'assets/images/items/16.png');
+                extraPotion.price = 7;
+                this.items.push(extraPotion);
+            }
 
             this.room.openAllDoors();
         } else if (roomType === 'altar') {
@@ -644,6 +677,17 @@ class Game {
                 // 부드러운 이동 (Lerp)
                 this.camera.x += (targetCamX - this.camera.x) * 0.1;
                 this.camera.y += (targetCamY - this.camera.y) * 0.1;
+
+                // 화면 흔들림 업데이트
+                if (this.screenShake.duration > 0) {
+                    this.screenShake.duration -= deltaTime;
+                    const intensity = this.screenShake.intensity * (this.screenShake.duration / 0.5); // 시간이 지날수록 약해짐
+                    this.screenShake.x = (Math.random() - 0.5) * intensity;
+                    this.screenShake.y = (Math.random() - 0.5) * intensity;
+                } else {
+                    this.screenShake.x = 0;
+                    this.screenShake.y = 0;
+                }
 
                 // 장애물 충돌 체크
                 const collidedObstacle = this.room.checkObstacleCollision(this.player);
@@ -949,6 +993,14 @@ class Game {
             }
         }
 
+        // 아이템 업데이트
+        for (let i = this.items.length - 1; i >= 0; i--) {
+            this.items[i].update(deltaTime);
+            if (!this.items[i].active) {
+                this.items.splice(i, 1);
+            }
+        }
+
         // 충돌 감지
         this.checkCollisions();
 
@@ -1084,6 +1136,9 @@ class Game {
             if (checkCollision(playerBounds, enemyBounds)) {
                 // 플레이어가 데미지를 받음
                 if (this.player.takeDamage(enemy.damage)) {
+                    // 화면 흔들림 효과
+                    this.shakeScreen(10, 0.3);
+
                     // 넉백 효과 (적 반대 방향으로 밀림)
                     const dx = this.player.x - enemy.x;
                     const dy = this.player.y - enemy.y;
@@ -1170,9 +1225,9 @@ class Game {
         // 화면 클리어
         this.clear();
 
-        // 카메라 적용
+        // 카메라 적용 (흔들림 포함)
         this.ctx.save();
-        this.ctx.translate(-this.camera.x, -this.camera.y);
+        this.ctx.translate(-this.camera.x + this.screenShake.x, -this.camera.y + this.screenShake.y);
 
         // 방 그리기
         if (this.room) {
@@ -1367,6 +1422,12 @@ class Game {
                 showTitle();
             }
         }, 2000);
+    }
+
+    // 화면 흔들림 시작
+    shakeScreen(intensity, duration) {
+        this.screenShake.intensity = intensity;
+        this.screenShake.duration = duration;
     }
 
     // 파티클 생성
