@@ -363,7 +363,7 @@ class Game {
         } else if (roomType === 'shop') {
             // 상점
             const centerX = this.canvas.width / 2;
-            const centerY = this.canvas.height / 2;
+            const centerY = this.canvas.height / 2 + 100; // 상점 주인 아래로 내림
             const spacing = 150;
 
             // 1. 회복 포션 (가격 7)
@@ -429,8 +429,8 @@ class Game {
             this.spawnItem(this.canvas.width / 2, this.canvas.height / 2 + 100, 'mystery_item', 'assets/images/items/3.png');
         }
 
-        // 장애물 생성 (시작방과 보스방 제외)
-        if (roomType !== 'start' && roomType !== 'boss') {
+        // 장애물 생성 (시작방, 보스방, 상점방 제외)
+        if (roomType !== 'start' && roomType !== 'boss' && roomType !== 'shop') {
             this.room.generateObstacles();
         }
     }
