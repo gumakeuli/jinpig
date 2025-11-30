@@ -534,6 +534,9 @@ class Game {
         this.activeItems = []; // 플레이어 아이템(Slash)도 초기화될 수 있음. 주의.
         // Slash는 activeItems에 들어가는데, 플레이어가 다시 사용하면 생성되므로 초기화해도 됨.
 
+        // 현재 방 참조 제거 (loadRoomById에서 이전 방을 저장하지 않도록)
+        this.room = null;
+
         // 새 던전 생성
         const generator = new DungeonGenerator(this.level);
         this.dungeon = generator.generate();
