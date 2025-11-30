@@ -44,8 +44,8 @@ class DungeonGenerator {
 
     // Phase 1: BFS로 플로어 플랜 생성
     generateFloorplan() {
-        // 방 개수 계산: 7~10개 랜덤
-        const roomCount = Math.floor(Math.random() * 4) + 7; // 7, 8, 9, 10
+        // 방 개수 계산: 15~20개 랜덤 (더 많은 방)
+        const roomCount = Math.floor(Math.random() * 6) + 15; // 15, 16, 17, 18, 19, 20
         const maxRooms = roomCount;
 
         // 시작 방 추가
@@ -61,6 +61,27 @@ class DungeonGenerator {
 
         let roomsPlaced = 1;
 
+        // 시작 방 주변에 3개의 방 강제 배치 (사용자 요청)
+        const startNeighbors = this.getCardinalNeighbors(this.startRoom);
+        // 랜덤하게 섞기
+        startNeighbors.sort(() => Math.random() - 0.5);
+
+        // 최대 3개까지 배치
+        const initialNeighborsCount = Math.min(startNeighbors.length, 3);
+        for (let i = 0; i < initialNeighborsCount; i++) {
+            const neighborId = startNeighbors[i];
+            this.grid[neighborId] = { type: 'normal', neighbors: [] };
+            this.rooms.set(neighborId, {
+                cellId: neighborId,
+                type: 'normal',
+                neighbors: [],
+                cleared: false,
+                visited: false
+            });
+            queue.push(neighborId);
+            roomsPlaced++;
+        }
+
         // BFS 확장
         while (queue.length > 0 && roomsPlaced < maxRooms) {
             const current = queue.shift();
@@ -73,8 +94,8 @@ class DungeonGenerator {
                 // 이웃이 2개 이상이면 스킵 (루프 방지)
                 if (this.countFilledNeighbors(neighborId) >= 2) continue;
 
-                // 50% 확률로 방 배치
-                if (Math.random() < 0.5) {
+                // 70% 확률로 방 배치 (더 밀집되게)
+                if (Math.random() < 0.7) {
                     this.grid[neighborId] = { type: 'normal', neighbors: [] };
                     this.rooms.set(neighborId, {
                         cellId: neighborId,
