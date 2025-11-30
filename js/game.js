@@ -1361,5 +1361,15 @@ class Game {
             }
         }, 2000);
     }
+
+    // 파티클 생성
+    spawnParticles(x, y, color, count) {
+        for (let i = 0; i < count; i++) {
+            const speed = 50 + Math.random() * 100;
+            const life = 0.3 + Math.random() * 0.4;
+            const size = 2 + Math.random() * 3;
+            this.particles.push(new Particle(x, y, color, speed, life, size));
+        }
+    }
 }
 
