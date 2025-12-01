@@ -371,12 +371,13 @@ class Game {
             potion.price = 7;
             this.items.push(potion);
 
-            // 2. 스탯 업그레이드 (릴리바이스의 바디) (가격 15)
+            // 2. 스탯 업그레이드 (릴리바이스의 바디) (가격 20~30 랜덤)
             const statUp = new Item(centerX, centerY, 'lilith_body', 'assets/images/items/1.png');
-            statUp.price = 15;
+            statUp.price = Math.floor(Math.random() * 11) + 20; // 20 ~ 30
+            statUp.hideNameInShop = true;
             this.items.push(statUp);
 
-            // 3. 랜덤 장비 (가격 30)
+            // 3. 랜덤 장비 (가격 20~30 랜덤)
             const equipmentTypes = [
                 { type: 'mystery_item', image: 'assets/images/items/3.png' },
                 { type: 'soda_komibol', image: 'assets/images/items/2.jpg' },
@@ -389,7 +390,8 @@ class Game {
             if (availableEquip.length > 0) {
                 const randomEquip = availableEquip[Math.floor(Math.random() * availableEquip.length)];
                 const equipItem = new Item(centerX + spacing, centerY, randomEquip.type, randomEquip.image);
-                equipItem.price = 30;
+                equipItem.price = Math.floor(Math.random() * 11) + 20; // 20 ~ 30
+                equipItem.hideNameInShop = true;
                 this.items.push(equipItem);
             } else {
                 // 장비를 다 모았으면 포션 하나 더 (가격 7)

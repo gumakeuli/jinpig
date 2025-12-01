@@ -236,7 +236,7 @@ class Item {
             ctx.textAlign = 'center';
             ctx.textBaseline = 'bottom';
 
-            const text = `${this.name} - ${this.price}`;
+            const text = (this.hideNameInShop && this.price > 0) ? `??? - ${this.price}` : `${this.name} - ${this.price}`;
             const textX = this.x;
             const textY = this.y - this.height / 2 + floatY - 30; // 아이템 위쪽
 

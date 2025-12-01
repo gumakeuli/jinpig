@@ -24,9 +24,9 @@ class Minimap {
 
     // 미니맵 그리기
     draw(ctx) {
-        const startX = this.x;
+        this.cellSize = 12; // 크기 감소 (14 -> 12)
+        const startX = this.x - 20; // 왼쪽으로 조금 이동
         const startY = this.y;
-        this.cellSize = 14; // 크기 증가
 
         // 배경
         ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
