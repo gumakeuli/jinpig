@@ -411,7 +411,7 @@ class Room {
     // 상점 주인 그리기
     drawShopkeeper(ctx, deltaTime) {
         const centerX = this.canvasWidth / 2;
-        const centerY = this.canvasHeight / 2 - 200; // 상단으로 이동
+        const centerY = this.canvasHeight / 2 - 150; // 상단으로 이동 (조금 내림)
         const size = 100;
 
         // 상점 주인 이미지

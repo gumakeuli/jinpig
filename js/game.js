@@ -328,7 +328,11 @@ class Game {
         // 방 타입별 처리
         if (roomType === 'boss') {
             // 보스방: 보스 적 생성 (중앙)
-            this.spawnEnemy(roomWidth / 2, roomHeight / 2, 'boss');
+            if (this.level === 2) {
+                this.spawnEnemy(roomWidth / 2, roomHeight / 2, 'hive_boss');
+            } else {
+                this.spawnEnemy(roomWidth / 2, roomHeight / 2, 'boss');
+            }
 
             this.room.closeAllDoors();
         } else if (roomType === 'treasure') {

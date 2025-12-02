@@ -68,17 +68,11 @@ class Enemy {
                 this.color = '#800080'; // 보라색
                 this.width = 120;
                 this.height = 120;
-                // 별의 소리 드랍 (대량)
-                this.starDropTable = [
-                    { count: 10, chance: 1.0 }
-                ];
-                // 보스 이미지
+                this.starDropTable = [{ count: 10, chance: 1.0 }];
                 this.imageIdle.src = 'assets/images/boss/1.jpg';
-
-                // 보스 AI 상태
-                this.aiState = 'idle'; // idle, warning, dash, summon, shoot
+                this.aiState = 'idle';
                 this.aiTimer = 0;
-                this.patternTimer = 2.0; // 패턴 간격
+                this.patternTimer = 2.0;
                 this.dashTarget = { x: 0, y: 0 };
                 break;
             case 'boss_minion':
@@ -88,10 +82,30 @@ class Enemy {
                 this.color = '#ff00ff';
                 this.width = 40;
                 this.height = 40;
-                this.starDropTable = [
-                    { count: 0, chance: 1.0 }
-                ];
+                this.starDropTable = [{ count: 0, chance: 1.0 }];
                 this.imageIdle.src = 'assets/images/boss/2.jpg';
+                break;
+            case 'hive_boss':
+                this.speed = 0; // 고정형
+                this.maxHealth = 150; // 높은 체력 (디펜스/지구전)
+                this.damage = 0; // 직접 공격 안함
+                this.color = '#4B0082'; // 인디고
+                this.width = 150;
+                this.height = 150;
+                this.starDropTable = [{ count: 20, chance: 1.0 }];
+                this.imageIdle.src = 'assets/images/boss/hive.jpg'; // 임시 이미지
+                this.aiState = 'idle';
+                this.aiTimer = 2.0; // 초기 대기
+                break;
+            case 'hive_minion':
+                this.speed = 120; // 빠름
+                this.maxHealth = 1; // 물몸
+                this.damage = 1;
+                this.color = '#00FF00'; // 라임색
+                this.width = 32;
+                this.height = 32;
+                this.starDropTable = [{ count: 0, chance: 0.1 }]; // 낮은 확률로 드랍
+                this.imageIdle.src = 'assets/images/boss/minion.jpg'; // 임시 이미지
                 break;
         }
 
@@ -379,6 +393,53 @@ class Enemy {
             this.aiTimer -= deltaTime;
         }
 
+        // 하이브 보스 (2스테이지)
+        if (this.type === 'hive_boss') {
+            switch (this.aiState) {
+                case 'idle':
+                    if (this.aiTimer <= 0) {
+                        this.aiState = 'summon_wave';
+                    }
+                    break;
+                case 'summon_wave':
+                    // 대량 소환 (8마리)
+                    const minionCount = 8;
+                    for (let i = 0; i < minionCount; i++) {
+                        const angle = (Math.PI * 2 / minionCount) * i;
+                        const spawnDist = 120;
+                        const sx = this.x + Math.cos(angle) * spawnDist;
+                        const sy = this.y + Math.sin(angle) * spawnDist;
+
+                        // 화면 밖으로 나가지 않게 조정
+                        const clampedX = Math.max(60, Math.min(game.canvas.width - 60, sx));
+                        const clampedY = Math.max(60, Math.min(game.canvas.height - 60, sy));
+
+                        game.spawnEnemy(clampedX, clampedY, 'hive_minion');
+                    }
+
+                    // 체력이 50% 이하면 추가 소환 (광폭화)
+                    if (this.health < this.maxHealth * 0.5) {
+                        for (let i = 0; i < 4; i++) {
+                            const angle = Math.random() * Math.PI * 2;
+                            const spawnDist = 180;
+                            const sx = this.x + Math.cos(angle) * spawnDist;
+                            const sy = this.y + Math.sin(angle) * spawnDist;
+
+                            const clampedX = Math.max(60, Math.min(game.canvas.width - 60, sx));
+                            const clampedY = Math.max(60, Math.min(game.canvas.height - 60, sy));
+
+                            game.spawnEnemy(clampedX, clampedY, 'hive_minion');
+                        }
+                    }
+
+                    this.aiState = 'idle';
+                    this.aiTimer = 4.0; // 4초마다 소환 (웨이브 디펜스 느낌)
+                    break;
+            }
+            return;
+        }
+
+        // 기존 보스 (1스테이지)
         switch (this.aiState) {
             case 'idle':
                 // 플레이어 향해 천천히 이동
