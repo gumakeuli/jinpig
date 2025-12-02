@@ -1,5 +1,5 @@
 class Slash {
-    constructor(x, y, angle, damage) {
+    constructor(x, y, angle, damage, imagePath = 'assets/images/items/3.png') {
         this.x = x; // 플레이어 위치 (회전 중심)
         this.y = y;
         this.angle = angle; // 라디안 각도
@@ -16,9 +16,9 @@ class Slash {
         this.maxReach = 150; // 최대 찌르기 거리 (사거리 증가)
         this.currentReach = 0; // 현재 찌르기 거리
 
-        // 이미지 로드 (3번 아이템 이미지 사용)
+        // 이미지 로드
         this.image = new Image();
-        this.image.src = 'assets/images/items/3.png';
+        this.image.src = imagePath;
 
         this.hitEnemies = []; // 이미 타격한 적 목록
     }

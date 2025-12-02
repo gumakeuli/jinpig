@@ -120,6 +120,15 @@ class Item {
                     console.log('몬텔리의 총 획득!');
                 };
                 break;
+            case 'murasama':
+                this.name = '무라사마';
+                this.description = ''; // 설명 없음
+                this.color = '#ff0000'; // 빨간색
+                this.effect = (player) => {
+                    player.activeItem = 'murasama';
+                    console.log('무라사마 획득!');
+                };
+                break;
             default:
                 this.name = '알 수 없는 아이템';
                 this.description = '효과 없음';

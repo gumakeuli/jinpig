@@ -345,7 +345,8 @@ class Game {
                 { type: 'lilith_body', image: 'assets/images/items/1.png' },
                 { type: 'mystery_item', image: 'assets/images/items/3.png' },
                 { type: 'soda_komibol', image: 'assets/images/items/2.jpg' },
-                { type: 'montelli_gun', image: 'assets/images/items/5.webp' }
+                { type: 'montelli_gun', image: 'assets/images/items/5.webp' },
+                { type: 'murasama', image: 'assets/images/items/20.gif' }
             ];
 
             // 이미 획득한 아이템 제외
@@ -385,7 +386,8 @@ class Game {
             const equipmentTypes = [
                 { type: 'mystery_item', image: 'assets/images/items/3.png' },
                 { type: 'soda_komibol', image: 'assets/images/items/2.jpg' },
-                { type: 'montelli_gun', image: 'assets/images/items/5.webp' }
+                { type: 'montelli_gun', image: 'assets/images/items/5.webp' },
+                { type: 'murasama', image: 'assets/images/items/20.gif' }
             ];
 
             // 미보유 장비만 필터링
@@ -798,6 +800,22 @@ class Game {
                     this.activeItems.push(slash);
                     this.player.useItem();
                     console.log('찌르기 공격 사용!');
+                } else if (this.player.activeItem === 'murasama') {
+                    // 무라사마 공격 (21번 이미지)
+                    const playerScreenX = this.player.x - this.camera.x;
+                    const playerScreenY = this.player.y - this.camera.y;
+                    const angle = Math.atan2(this.mouseY - playerScreenY, this.mouseX - playerScreenX);
+
+                    const slash = new Slash(
+                        this.player.x,
+                        this.player.y,
+                        angle,
+                        2 + this.player.damage * 2.0, // 더 강력한 데미지
+                        'assets/images/items/21.gif'
+                    );
+                    this.activeItems.push(slash);
+                    this.player.useItem();
+                    console.log('무라사마 공격 사용!');
                 }
             }
         }
