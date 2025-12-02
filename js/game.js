@@ -433,8 +433,8 @@ class Game {
             // 시작 방은 문을 열어둠
             this.room.openAllDoors();
 
-            // 테스트용: 시작 방에 플뢰르 드 리스의 검 생성
-            this.spawnItem(this.canvas.width / 2, this.canvas.height / 2 + 100, 'mystery_item', 'assets/images/items/3.png');
+            // 테스트용: 시작 방에 무라사마 생성
+            this.spawnItem(this.canvas.width / 2, this.canvas.height / 2 + 100, 'murasama', 'assets/images/items/20.gif');
         }
 
         // 장애물 생성 (시작방, 보스방, 상점방 제외)
@@ -801,20 +801,33 @@ class Game {
                     this.player.useItem();
                     console.log('찌르기 공격 사용!');
                 } else if (this.player.activeItem === 'murasama') {
-                    // 무라사마 공격 (21번 이미지)
+                    // 무라사마 공격 (21번 이미지 - GIF)
                     const playerScreenX = this.player.x - this.camera.x;
                     const playerScreenY = this.player.y - this.camera.y;
                     const angle = Math.atan2(this.mouseY - playerScreenY, this.mouseX - playerScreenX);
 
-                    const slash = new Slash(
-                        this.player.x,
-                        this.player.y,
+                    // 마우스 위치에 생성 (플레이어 위치가 아님)
+                    // "GIF가 그냥 마우스 방향에 나오는 형식" -> 마우스 커서 위치에 생성?
+                    // 아니면 플레이어에서 마우스 방향으로 일정 거리 떨어진 곳?
+                    // 일단 플레이어 위치에서 마우스 방향으로 약간 떨어진 곳에 생성하도록 함.
+                    // 또는 마우스 커서 위치 자체에 생성.
+                    // 유저 요청: "마우스 방향에 나오는 형식" -> "앞으로 찌르면서 공격하는 방식이 아니고"
+                    // 해석: 플레이어 주변이 아니라 마우스가 가리키는 곳(혹은 그 방향의 일정 거리)에 이펙트가 펑 하고 나오는 것.
+                    // 여기서는 플레이어 중심에서 마우스 방향으로 100px 떨어진 곳에 생성해보자.
+
+                    const distance = 60;
+                    const spawnX = this.player.x + Math.cos(angle) * distance;
+                    const spawnY = this.player.y + Math.sin(angle) * distance;
+
+                    const slash = new GifSlash(
+                        spawnX,
+                        spawnY,
                         angle,
-                        2 + this.player.damage * 2.0, // 더 강력한 데미지
+                        5 + this.player.damage * 1.5, // 데미지 공식 변경: 5 + 공격력 * 1.5
                         'assets/images/items/21.gif'
                     );
                     this.activeItems.push(slash);
-                    this.player.useItem();
+                    this.player.useItem(0.2); // 공격 속도 증가 (쿨타임 0.2초)
                     console.log('무라사마 공격 사용!');
                 }
             }
@@ -1022,6 +1035,32 @@ class Game {
             this.items[i].update(deltaTime);
             if (!this.items[i].active) {
                 this.items.splice(i, 1);
+            }
+        }
+
+        // 사용 아이템 효과 업데이트 (Slash, GifSlash)
+        for (let i = this.activeItems.length - 1; i >= 0; i--) {
+            // Slash와 GifSlash 모두 호환되도록 인자 전달
+            this.activeItems[i].update(deltaTime, this.player.x, this.player.y, this.camera.x, this.camera.y);
+
+            // 비활성 아이템 제거
+            if (!this.activeItems[i].active) {
+                // GifSlash의 경우 DOM 요소 제거는 내부에서 처리됨
+                this.activeItems.splice(i, 1);
+            } else {
+                // 충돌 체크
+                for (const enemy of this.enemies) {
+                    if (this.activeItems[i].checkCollision(enemy)) {
+                        // 이미 타격한 적은 제외
+                        if (!this.activeItems[i].hitEnemies.includes(enemy)) {
+                            enemy.takeDamage(this.activeItems[i].damage);
+                            this.activeItems[i].hitEnemies.push(enemy);
+
+                            // 타격 이펙트
+                            this.spawnParticles(enemy.x, enemy.y, '#ff0000', 5);
+                        }
+                    }
+                }
             }
         }
 
@@ -1311,9 +1350,32 @@ class Game {
             projectile.draw(this.ctx);
         }
 
-        // 사용 아이템 효과 그리기
-        for (const item of this.activeItems) {
-            item.draw(this.ctx);
+        // 사용 아이템 효과 업데이트
+        for (let i = this.activeItems.length - 1; i >= 0; i--) {
+            // Slash와 GifSlash 모두 호환되도록 인자 전달
+            // Slash: update(deltaTime, playerX, playerY)
+            // GifSlash: update(deltaTime, playerX, playerY, cameraX, cameraY)
+            this.activeItems[i].update(deltaTime, this.player.x, this.player.y, this.camera.x, this.camera.y);
+
+            // 비활성 아이템 제거
+            if (!this.activeItems[i].active) {
+                // GifSlash의 경우 DOM 요소 제거는 내부에서 처리됨 (active=false 될 때)
+                this.activeItems.splice(i, 1);
+            } else {
+                // 충돌 체크
+                for (const enemy of this.enemies) {
+                    if (this.activeItems[i].checkCollision(enemy)) {
+                        // 이미 타격한 적은 제외 (Slash 클래스에 hitEnemies 있음, GifSlash에도 추가 필요)
+                        if (!this.activeItems[i].hitEnemies.includes(enemy)) {
+                            enemy.takeDamage(this.activeItems[i].damage);
+                            this.activeItems[i].hitEnemies.push(enemy);
+
+                            // 타격 이펙트?
+                            this.spawnParticles(enemy.x, enemy.y, '#ff0000', 5);
+                        }
+                    }
+                }
+            }
         }
 
         // 카메라 복구

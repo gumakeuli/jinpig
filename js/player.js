@@ -425,7 +425,7 @@ class Player {
     }
 
     // 아이템 사용 처리
-    useItem() {
-        this.itemCooldown = this.itemMaxCooldown;
+    useItem(cooldown = null) {
+        this.itemCooldown = cooldown !== null ? cooldown : this.itemMaxCooldown;
     }
 }
