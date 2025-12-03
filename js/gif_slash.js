@@ -7,7 +7,7 @@ class GifSlash {
         this.damage = damage;
         this.active = true;
 
-        this.lifetime = 1.0; // GIF 재생 시간 (GIF 실제 길이에 맞춤)
+        this.lifetime = 1.5; // GIF 재생 시간 (3번 베기 애니메이션 전체 재생)
         this.timer = 0;
         this.orbitRadius = 60; // 플레이어로부터의 거리
 
