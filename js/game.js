@@ -1096,10 +1096,24 @@ class Game {
                 // 충돌 체크
                 for (const enemy of this.enemies) {
                     if (this.activeItems[i].checkCollision(enemy)) {
-                        // 이미 타격한 적은 제외
-                        if (!this.activeItems[i].hitEnemies.includes(enemy)) {
-                            enemy.takeDamage(this.activeItems[i].damage);
-                            this.activeItems[i].hitEnemies.push(enemy);
+                        // GifSlash의 경우 페이즈 기반 데미지
+                        const currentDamage = this.activeItems[i].getDamage ? this.activeItems[i].getDamage() : this.activeItems[i].damage;
+
+                        if (currentDamage > 0) {
+                            enemy.takeDamage(currentDamage);
+
+                            // GifSlash의 경우 현재 페이즈를 hasHit로 표시
+                            if (this.activeItems[i].getCurrentPhase) {
+                                const phase = this.activeItems[i].getCurrentPhase();
+                                if (phase) {
+                                    phase.hasHit = true;
+                                }
+                            } else {
+                                // Slash의 경우 기존 방식
+                                if (!this.activeItems[i].hitEnemies.includes(enemy)) {
+                                    this.activeItems[i].hitEnemies.push(enemy);
+                                }
+                            }
 
                             // 타격 이펙트
                             this.spawnParticles(enemy.x, enemy.y, '#ff0000', 5);

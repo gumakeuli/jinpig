@@ -30,7 +30,12 @@ class GifSlash {
             gameArea.appendChild(this.element);
         }
 
-        this.hitEnemies = [];
+        // 2타 시스템
+        this.hitPhases = [
+            { startTime: 0.3, endTime: 0.6, rangeMultiplier: 1.0, damageMultiplier: 1.0, hasHit: false }, // 1타
+            { startTime: 0.8, endTime: 1.2, rangeMultiplier: 1.5, damageMultiplier: 1.5, hasHit: false }  // 2타 (넓고 강함)
+        ];
+        this.hitEnemies = []; // 전체 타격한 적 (중복 타격 방지용)
     }
 
     update(deltaTime, playerX, playerY, cameraX, cameraY) {
@@ -72,17 +77,38 @@ class GifSlash {
         ctx.restore();
     }
 
+    // 현재 활성 타격 페이즈 가져오기
+    getCurrentPhase() {
+        for (const phase of this.hitPhases) {
+            if (this.timer >= phase.startTime && this.timer <= phase.endTime && !phase.hasHit) {
+                return phase;
+            }
+        }
+        return null;
+    }
+
+    // 현재 페이즈의 데미지 계산
+    getDamage() {
+        const phase = this.getCurrentPhase();
+        if (phase) {
+            return this.damage * phase.damageMultiplier;
+        }
+        return 0; // 타격 페이즈가 아니면 데미지 없음
+    }
+
     checkCollision(enemy) {
         if (!this.active) return false;
 
-        // 간단한 원형 충돌 or AABB
-        // 여기서는 이펙트 중심 기준 원형 충돌로 처리 (회전 무시)
+        const phase = this.getCurrentPhase();
+        if (!phase) return false; // 타격 페이즈가 아니면 충돌 없음
+
+        // 페이즈별 범위 적용
         const dx = enemy.x - this.x;
         const dy = enemy.y - this.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
 
-        // 이펙트 반지름 + 적 반지름
-        const hitRadius = this.width / 2 * 0.8; // 80% 크기
+        // 페이즈에 따라 범위 조정
+        const hitRadius = (this.width / 2 * 0.8) * phase.rangeMultiplier;
         const enemyRadius = enemy.width / 2;
 
         return dist < hitRadius + enemyRadius;
