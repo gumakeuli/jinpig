@@ -22,7 +22,7 @@ class GifSlash {
         this.element.style.height = `${this.height}px`;
         this.element.style.transformOrigin = 'center';
         this.element.style.pointerEvents = 'none'; // 마우스 이벤트 통과
-        this.element.style.zIndex = '100'; // 캔버스 위에 표시
+        this.element.style.zIndex = '1000'; // 캔버스 위에 표시 (높은 우선순위)
 
         // 게임 영역에 추가
         const gameArea = document.getElementById('game-area');
