@@ -174,6 +174,12 @@ class Game {
         this.camera = { x: 0, y: 0 };
         this.screenShake = { x: 0, y: 0, intensity: 0, duration: 0 };
 
+        // 보스 BGM
+        this.bossBGM = new Audio('assets/sounds/홍북이의 노래.mp3');
+        this.bossBGM.loop = true;
+        this.bossBGM.volume = 0.5;
+        this.isBossBGMPlaying = false;
+
         // 던전 생성
         const generator = new DungeonGenerator(this.level);
         this.dungeon = generator.generate();
@@ -877,6 +883,21 @@ class Game {
         // 장애물 업데이트
         if (this.room) {
             this.room.updateObstacles(deltaTime);
+        }
+
+        // 보스 BGM 제어 (1스테이지 보스)
+        const isBossRoom = this.dungeon && this.currentRoomId === this.dungeon.bossRoom && this.level === 1;
+        const hasBossEnemy = this.enemies.some(e => e.type === 'boss');
+
+        if (isBossRoom && hasBossEnemy && !this.isBossBGMPlaying) {
+            // 보스 BGM 재생
+            this.bossBGM.currentTime = 0;
+            this.bossBGM.play().catch(err => console.log('BGM 재생 실패:', err));
+            this.isBossBGMPlaying = true;
+        } else if ((!isBossRoom || !hasBossEnemy) && this.isBossBGMPlaying) {
+            // 보스 BGM 정지
+            this.bossBGM.pause();
+            this.isBossBGMPlaying = false;
         }
 
         // 적 업데이트
