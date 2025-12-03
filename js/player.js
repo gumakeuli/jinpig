@@ -86,12 +86,14 @@ class Player {
         this.invincibleTime = 0;
         this.invincibleDuration = 1000; // 1초
 
-        // 사용 아이템
-        this.activeItem = null; // 'slash' 등
+        // 사용 아이템 슬롯 시스템
+        this.itemSlots = [null, null]; // 2개 슬롯
+        this.currentSlot = 0; // 현재 선택된 슬롯 (0 or 1)
         this.itemCooldown = 0;
         this.itemMaxCooldown = 2; // 2초 쿨다운 (후딜레이 증가)
 
         this.keys.space = false;
+        this.keys.tab = false;
 
         // 아이템 효과 플래그
         this.hasSodaKomibol = false;
@@ -136,6 +138,13 @@ class Player {
             case 'Spacebar':
                 this.keys.space = true;
                 break;
+            // 슬롯 전환 - Tab
+            case 'Tab':
+                this.keys.tab = true;
+                // 슬롯 전환
+                this.currentSlot = (this.currentSlot + 1) % 2;
+                console.log(`슬롯 전환: ${this.currentSlot}`);
+                break;
         }
     }
 
@@ -175,6 +184,10 @@ class Player {
             case ' ':
             case 'Spacebar':
                 this.keys.space = false;
+                break;
+            // 슬롯 전환 - Tab
+            case 'Tab':
+                this.keys.tab = false;
                 break;
         }
     }
@@ -421,7 +434,27 @@ class Player {
 
     // 아이템 사용 가능 여부
     canUseItem() {
-        return this.activeItem && this.itemCooldown <= 0;
+        return this.itemSlots[this.currentSlot] && this.itemCooldown <= 0;
+    }
+
+    // 현재 활성화된 아이템 가져오기
+    getActiveItem() {
+        return this.itemSlots[this.currentSlot];
+    }
+
+    // 슬롯에 아이템 추가
+    addItemToSlot(itemType) {
+        // 빈 슬롯 찾기
+        for (let i = 0; i < this.itemSlots.length; i++) {
+            if (this.itemSlots[i] === null) {
+                this.itemSlots[i] = itemType;
+                console.log(`슬롯 ${i}에 ${itemType} 추가`);
+                return;
+            }
+        }
+        // 모든 슬롯이 가득 차면 현재 슬롯 덮어쓰기
+        this.itemSlots[this.currentSlot] = itemType;
+        console.log(`슬롯 ${this.currentSlot}에 ${itemType} 덮어쓰기`);
     }
 
     // 아이템 사용 처리

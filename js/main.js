@@ -33,6 +33,10 @@ function setupButtons() {
             game.start();
             gameTitle.style.display = 'none';
         }
+        // Tab 키 기본 동작 방지 (슬롯 전환용)
+        if (e.key === 'Tab') {
+            e.preventDefault();
+        }
     });
 }
 

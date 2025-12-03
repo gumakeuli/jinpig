@@ -94,7 +94,7 @@ class Item {
                 this.description = '속박을 끊고 피어난 진정한 용기';
                 this.color = '#00ffff';
                 this.effect = (player) => {
-                    player.activeItem = 'slash';
+                    player.addItemToSlot('slash');
                     console.log('플뢰르 드 리스의 검(베기) 장착!');
                 };
                 break;
@@ -125,7 +125,7 @@ class Item {
                 this.description = ''; // 설명 없음
                 this.color = '#ff0000'; // 빨간색
                 this.effect = (player) => {
-                    player.activeItem = 'murasama';
+                    player.addItemToSlot('murasama');
                     console.log('무라사마 획득!');
                 };
                 break;

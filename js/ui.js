@@ -27,6 +27,9 @@ class UI {
         // 별의 소리 개수 표시
         this.drawStarCount(ctx, starCount || 0);
 
+        // 아이템 슬롯 표시
+        this.drawItemSlots(ctx, player);
+
         // 조작법 힌트 (게임 하단)
         this.drawControls(ctx);
 
@@ -176,6 +179,57 @@ class UI {
         ctx.font = 'bold 24px Arial';
         ctx.textAlign = 'right';
         ctx.fillText(`점수: ${score}`, this.canvasWidth - this.heartPadding, this.heartPadding + 20);
+        ctx.textAlign = 'left';
+    }
+
+    // 아이템 슬롯 표시
+    drawItemSlots(ctx, player) {
+        const slotSize = 50;
+        const slotSpacing = 10;
+        const startX = this.canvasWidth / 2 - (slotSize + slotSpacing / 2);
+        const startY = this.canvasHeight - 80;
+
+        for (let i = 0; i < 2; i++) {
+            const x = startX + i * (slotSize + slotSpacing);
+            const y = startY;
+
+            // 슬롯 배경 (현재 선택된 슬롯은 강조)
+            if (i === player.currentSlot) {
+                ctx.fillStyle = 'rgba(255, 255, 0, 0.5)'; // 노란색 강조
+                ctx.strokeStyle = '#ffff00';
+                ctx.lineWidth = 3;
+            } else {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1;
+            }
+
+            ctx.fillRect(x, y, slotSize, slotSize);
+            ctx.strokeRect(x, y, slotSize, slotSize);
+
+            // 슬롯 번호
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText(`${i + 1}`, x + 4, y + 14);
+
+            // 아이템 이름 표시
+            const itemType = player.itemSlots[i];
+            if (itemType) {
+                ctx.font = '10px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillStyle = '#ffffff';
+                // 아이템 타입에 따라 간단한 아이콘 텍스트 표시
+                let itemName = itemType === 'slash' ? '검' : itemType === 'murasama' ? '무' : '?';
+                ctx.fillText(itemName, x + slotSize / 2, y + slotSize / 2 + 5);
+            }
+        }
+
+        // Tab 키 힌트
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Tab: 슬롯 전환 | Space: 사용', this.canvasWidth / 2, startY - 8);
         ctx.textAlign = 'left';
     }
 

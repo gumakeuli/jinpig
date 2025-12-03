@@ -782,7 +782,7 @@ class Game {
 
             // 사용 아이템 (베기 -> 찌르기)
             if (this.player.keys.space && this.player.canUseItem()) {
-                if (this.player.activeItem === 'slash') {
+                if (this.player.getActiveItem() === 'slash') {
                     // 마우스 방향으로 찌르기
                     // 플레이어의 화면상 위치
                     const playerScreenX = this.player.x - this.camera.x;
@@ -800,7 +800,7 @@ class Game {
                     this.activeItems.push(slash);
                     this.player.useItem();
                     console.log('찌르기 공격 사용!');
-                } else if (this.player.activeItem === 'murasama') {
+                } else if (this.player.getActiveItem() === 'murasama') {
                     // 무라사마 공격 (21번 이미지 - GIF)
                     const playerScreenX = this.player.x - this.camera.x;
                     const playerScreenY = this.player.y - this.camera.y;
