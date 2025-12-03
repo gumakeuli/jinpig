@@ -827,7 +827,7 @@ class Game {
                         'assets/images/items/21.gif'
                     );
                     this.activeItems.push(slash);
-                    this.player.useItem(0.2); // 공격 속도 증가 (쿨타임 0.2초)
+                    this.player.useItem(1.5); // 공격 속도 감소 (쿨타임 1.5초)
                     console.log('무라사마 공격 사용!');
                 }
             }
