@@ -66,6 +66,7 @@ class Enemy {
                 this.maxHealth = 50;
                 this.damage = 2;
                 this.color = '#800080'; // 보라색
+                this.bossName = '홍북이'; // 보스 이름
                 this.width = 120;
                 this.height = 120;
                 this.starDropTable = [{ count: 10, chance: 1.0 }];

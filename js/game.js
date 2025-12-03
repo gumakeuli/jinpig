@@ -180,6 +180,14 @@ class Game {
         this.bossBGM.volume = 0.5;
         this.isBossBGMPlaying = false;
 
+        // 보스 인트로
+        this.bossIntro = {
+            active: false,
+            boss: null,
+            timer: 0,
+            duration: 3.0 // 3초 동안 표시
+        };
+
         // 던전 생성
         const generator = new DungeonGenerator(this.level);
         this.dungeon = generator.generate();
@@ -334,10 +342,18 @@ class Game {
         // 방 타입별 처리
         if (roomType === 'boss') {
             // 보스방: 보스 적 생성 (중앙)
+            let boss;
             if (this.level === 2) {
-                this.spawnEnemy(roomWidth / 2, roomHeight / 2, 'hive_boss');
+                boss = this.spawnEnemy(roomWidth / 2, roomHeight / 2, 'hive_boss');
             } else {
-                this.spawnEnemy(roomWidth / 2, roomHeight / 2, 'boss');
+                boss = this.spawnEnemy(roomWidth / 2, roomHeight / 2, 'boss');
+            }
+
+            // 보스 인트로 활성화 (레벨 1만)
+            if (this.level === 1 && boss && boss.bossName) {
+                this.bossIntro.active = true;
+                this.bossIntro.boss = boss;
+                this.bossIntro.timer = 0;
             }
 
             this.room.closeAllDoors();
@@ -898,6 +914,14 @@ class Game {
             // 보스 BGM 정지
             this.bossBGM.pause();
             this.isBossBGMPlaying = false;
+        }
+
+        // 보스 인트로 업데이트
+        if (this.bossIntro.active) {
+            this.bossIntro.timer += deltaTime;
+            if (this.bossIntro.timer >= this.bossIntro.duration) {
+                this.bossIntro.active = false;
+            }
         }
 
         // 적 업데이트
@@ -1468,6 +1492,11 @@ class Game {
             this.ctx.textAlign = 'center';
             this.ctx.fillText('이동 중...', this.canvas.width / 2, this.canvas.height / 2);
             this.ctx.textAlign = 'left';
+        }
+
+        // 보스 인트로 화면 (최상단)
+        if (this.bossIntro.active && this.ui) {
+            this.ui.drawBossIntro(this.ctx, this.bossIntro);
         }
     }
 

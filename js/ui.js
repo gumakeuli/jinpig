@@ -266,4 +266,60 @@ class UI {
 
         ctx.textAlign = 'left';
     }
+
+    // 보스 인트로 화면
+    drawBossIntro(ctx, bossIntro) {
+        if (!bossIntro.active || !bossIntro.boss) return;
+
+        const progress = bossIntro.timer / bossIntro.duration;
+
+        // 페이드 인/아웃 효과
+        let alpha;
+        if (progress < 0.2) {
+            // 페이드 인 (0 ~ 0.2)
+            alpha = progress / 0.2;
+        } else if (progress > 0.8) {
+            // 페이드 아웃 (0.8 ~ 1.0)
+            alpha = (1 - progress) / 0.2;
+        } else {
+            // 완전히 표시 (0.2 ~ 0.8)
+            alpha = 1.0;
+        }
+
+        // 반투명 검은색 배경
+        ctx.fillStyle = `rgba(0, 0, 0, ${alpha * 0.8})`;
+        ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
+
+        ctx.save();
+        ctx.globalAlpha = alpha;
+
+        // 보스 이미지 (중앙 상단)
+        if (bossIntro.boss.imageIdle && bossIntro.boss.imageIdle.complete) {
+            const imgSize = 200;
+            const imgX = (this.canvasWidth - imgSize) / 2;
+            const imgY = this.canvasHeight / 3 - imgSize / 2;
+
+            // 이미지 테두리
+            ctx.strokeStyle = '#ff0000';
+            ctx.lineWidth = 4;
+            ctx.strokeRect(imgX - 4, imgY - 4, imgSize + 8, imgSize + 8);
+
+            // 보스 이미지
+            ctx.drawImage(bossIntro.boss.imageIdle, imgX, imgY, imgSize, imgSize);
+        }
+
+        // 보스 이름
+        ctx.fillStyle = '#ff0000';
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 8;
+        ctx.font = 'bold 72px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        const nameY = this.canvasHeight * 0.65;
+        ctx.strokeText(bossIntro.boss.bossName, this.canvasWidth / 2, nameY);
+        ctx.fillText(bossIntro.boss.bossName, this.canvasWidth / 2, nameY);
+
+        ctx.restore();
+    }
 }
