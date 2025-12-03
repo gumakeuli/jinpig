@@ -174,6 +174,13 @@ class Game {
         this.camera = { x: 0, y: 0 };
         this.screenShake = { x: 0, y: 0, intensity: 0, duration: 0 };
 
+        // 기존 보스 BGM 정지 (게임 재시작 시)
+        if (this.bossBGM && this.isBossBGMPlaying) {
+            this.bossBGM.pause();
+            this.bossBGM.currentTime = 0;
+            this.isBossBGMPlaying = false;
+        }
+
         // 보스 BGM
         this.bossBGM = new Audio('assets/sounds/홍북이의 노래.mp3');
         this.bossBGM.loop = true;
@@ -974,6 +981,13 @@ class Game {
                 const starCount = enemy.getStarDropCount();
                 for (let j = 0; j < starCount; j++) {
                     this.spawnStar(enemy.x, enemy.y);
+                }
+
+                // 보스 처치 시 BGM 정지
+                if (enemy.type === 'boss' && this.isBossBGMPlaying) {
+                    this.bossBGM.pause();
+                    this.bossBGM.currentTime = 0;
+                    this.isBossBGMPlaying = false;
                 }
 
                 this.enemies.splice(i, 1);
