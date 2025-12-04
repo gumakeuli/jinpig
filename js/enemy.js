@@ -88,15 +88,22 @@ class Enemy {
                 break;
             case 'hive_boss':
                 this.speed = 0; // 고정형
-                this.maxHealth = 150; // 높은 체력 (디펜스/지구전)
+                this.maxHealth = 200; // 높은 체력 (저지전)
                 this.damage = 0; // 직접 공격 안함
                 this.color = '#4B0082'; // 인디고
+                this.bossName = '벌집 수호자'; // 보스 이름
                 this.width = 150;
                 this.height = 150;
-                this.starDropTable = [{ count: 20, chance: 1.0 }];
-                this.imageIdle.src = 'assets/images/boss/hive.jpg'; // 임시 이미지
-                this.aiState = 'idle';
-                this.aiTimer = 2.0; // 초기 대기
+                this.starDropTable = [{ count: 30, chance: 1.0 }];
+                this.imageIdle.src = 'assets/images/boss/hive.jpg';
+                this.aiState = 'spawning';
+                this.aiTimer = 0;
+                // 웨이브 시스템
+                this.waveNumber = 0;
+                this.maxWaves = 10; // 총 10웨이브
+                this.minionsPerWave = 3; // 웨이브당 잡몹 수
+                this.waveInterval = 5.0; // 웨이브 간격 (초)
+                this.currentWaveMinions = 0; // 현재 웨이브에서 소환된 잡몹 수
                 break;
             case 'hive_minion':
                 this.speed = 120; // 빠름
@@ -167,6 +174,12 @@ class Enemy {
         // 보스 AI
         if (this.type === 'boss') {
             this.updateBossAI(deltaTime, game);
+            return;
+        }
+
+        // Hive Boss AI (웨이브 소환)
+        if (this.type === 'hive_boss') {
+            this.updateHiveBossAI(deltaTime, game);
             return;
         }
 
