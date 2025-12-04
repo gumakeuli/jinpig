@@ -548,4 +548,40 @@ class Enemy {
                 break;
         }
     }
+
+    // Hive Boss AI (웨이브 소환 시스템)
+    updateHiveBossAI(deltaTime, game) {
+        this.aiTimer += deltaTime;
+
+        // 웨이브 소환
+        if (this.aiState === 'spawning') {
+            if (this.aiTimer >= this.waveInterval) {
+                this.aiTimer = 0;
+                this.waveNumber++;
+
+                // 최대 웨이브 도달 시 종료
+                if (this.waveNumber > this.maxWaves) {
+                    this.aiState = 'idle';
+                    return;
+                }
+
+                // 현재 웨이브 잡몹 소환
+                this.currentWaveMinions = 0;
+                const minionsToSpawn = this.minionsPerWave + Math.floor(this.waveNumber / 3); // 웨이브마다 증가
+
+                for (let i = 0; i < minionsToSpawn; i++) {
+                    // 보스 주변 랜덤 위치에 소환
+                    const angle = (Math.PI * 2 / minionsToSpawn) * i + Math.random() * 0.5;
+                    const spawnDist = 120 + Math.random() * 50;
+                    const sx = this.x + Math.cos(angle) * spawnDist;
+                    const sy = this.y + Math.sin(angle) * spawnDist;
+
+                    game.spawnEnemy(sx, sy, 'hive_minion');
+                    this.currentWaveMinions++;
+                }
+
+                console.log(`웨이브 ${this.waveNumber}/${this.maxWaves}: ${minionsToSpawn}마리 소환`);
+            }
+        }
+    }
 }
