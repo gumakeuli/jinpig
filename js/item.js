@@ -129,6 +129,123 @@ class Item {
                     console.log('무라사마 획득!');
                 };
                 break;
+            case 'fire_sword':
+                this.name = '화염 검';
+                this.description = '공격력 +2, 적에게 화상 효과';
+                this.color = '#FF4500';
+                this.price = 15;
+                this.effect = (player) => {
+                    if (player.damage < player.damageCap) {
+                        player.damage += 2;
+                    }
+                    player.hasFireSword = true;
+                };
+                break;
+            case 'ice_spear':
+                this.name = '얼음 창';
+                this.description = '적을 느리게 만듦';
+                this.color = '#00BFFF';
+                this.price = 12;
+                this.effect = (player) => {
+                    player.hasIceSpear = true;
+                };
+                break;
+            case 'lightning_arrow':
+                this.name = '번개 화살';
+                this.description = '관통 공격 가능';
+                this.color = '#FFD700';
+                this.price = 18;
+                this.effect = (player) => {
+                    player.hasLightningArrow = true;
+                };
+                break;
+            case 'poison_dagger':
+                this.name = '독 단검';
+                this.description = '지속 독 데미지';
+                this.color = '#9400D3';
+                this.price = 14;
+                this.effect = (player) => {
+                    player.hasPoisonDagger = true;
+                };
+                break;
+            case 'iron_shield':
+                this.name = '철갑 방패';
+                this.description = '최대 체력 +2';
+                this.color = '#C0C0C0';
+                this.price = 20;
+                this.effect = (player) => {
+                    if (player.maxHealth < player.maxHealthCap) {
+                        player.maxHealth += 2;
+                        player.health += 2;
+                    }
+                };
+                break;
+            case 'dodge_cloak':
+                this.name = '회피 망토';
+                this.description = '이동속도 +30%';
+                this.color = '#4B0082';
+                this.price = 16;
+                this.effect = (player) => {
+                    player.speed *= 1.3;
+                };
+                break;
+            case 'thorn_armor':
+                this.name = '가시 갑옷';
+                this.description = '피격 시 반사 데미지';
+                this.color = '#8B4513';
+                this.price = 18;
+                this.effect = (player) => {
+                    player.hasThornArmor = true;
+                };
+                break;
+            case 'regen_ring':
+                this.name = '재생 반지';
+                this.description = '5초마다 체력 1 회복';
+                this.color = '#32CD32';
+                this.price = 22;
+                this.effect = (player) => {
+                    player.hasRegenRing = true;
+                };
+                break;
+            case 'vampire_necklace':
+                this.name = '흡혈 목걸이';
+                this.description = '공격 시 체력 회복';
+                this.color = '#DC143C';
+                this.price = 25;
+                this.effect = (player) => {
+                    player.hasVampireNecklace = true;
+                };
+                break;
+            case 'double_shot':
+                this.name = '이중 사격';
+                this.description = '발사체 2개 발사';
+                this.color = '#FF6347';
+                this.price = 20;
+                this.effect = (player) => {
+                    player.hasDoubleShot = true;
+                };
+                break;
+            case 'explosive_bullets':
+                this.name = '폭발 탄환';
+                this.description = '착탄 시 범위 데미지';
+                this.color = '#FF8C00';
+                this.price = 24;
+                this.effect = (player) => {
+                    player.hasExplosiveBullets = true;
+                };
+                break;
+            case 'time_warp':
+                this.name = '시간 왜곡';
+                this.description = '공격속도 +2';
+                this.color = '#9370DB';
+                this.price = 18;
+                this.effect = (player) => {
+                    if (player.attackSpeed < player.attackSpeedCap) {
+                        player.attackSpeed += 2;
+                        player.updateFireRate();
+                    }
+                };
+                break;
             default:
                 this.name = '알 수 없는 아이템';
                 this.description = '효과 없음';

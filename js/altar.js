@@ -7,9 +7,9 @@ class Altar {
         this.active = true;
         this.used = false;
 
-        // Image (Pedestal)
+        // Image (석상)
         this.image = new Image();
-        this.image.src = 'assets/images/11.webp';
+        this.image.src = 'assets/images/altar_statue.png';
         this.loaded = false;
         this.image.onload = () => {
             this.loaded = true;

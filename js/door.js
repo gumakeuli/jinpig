@@ -5,7 +5,7 @@ class Door {
         this.canvasWidth = canvasWidth;
         this.canvasHeight = canvasHeight;
 
-        this.doorWidth = 80;
+        this.doorWidth = 80; // 원래 크기로 복원
         this.doorHeight = 48;
         this.wallThickness = 48;
 
@@ -83,7 +83,7 @@ class Door {
             Math.pow(playerCenterY - doorCenterY, 2)
         );
 
-        // 문 크기에 따른 감지 범위 (넓게)
+        // 문 크기에 따른 감지 범위 (원래대로)
         const detectionRange = Math.max(this.width, this.height) * 1.2;
 
         return this.active && distance < detectionRange;

@@ -147,9 +147,12 @@ class Game {
         this.drawStartScreen();
     }
 
-    init() {
+    init(preserveLevel = false) {
         // 게임 초기화 로직
-        this.level = 1; // 1스테이지부터 시작
+        // preserveLevel이 true가 아니면 항상 레벨 1로 리셋 (죽었을 때)
+        if (!preserveLevel) {
+            this.level = 1;
+        }
         this.player = new Player(this.canvas.width / 2, this.canvas.height / 2);
         this.projectiles = [];
         this.enemies = [];
@@ -248,6 +251,7 @@ class Game {
                 enemies: this.enemies,
                 items: this.items,
                 altar: this.altar, // 제단 상태 저장
+                stars: this.stars, // 별의 소리도 방별로 저장
                 // 투사체는 저장하지 않음 (방 이동 시 제거)
                 visited: true
             });
@@ -271,12 +275,16 @@ class Game {
             this.enemies = state.enemies;
             this.items = state.items;
             this.altar = state.altar; // 제단 상태 복원
+            this.stars = state.stars || []; // 별의 소리 복원 (없으면 빈 배열)
             this.projectiles = []; // 투사체 초기화
         } else {
             // 새로운 방 로드
             // 방 타입에 따라 로드
             const hasEnemies = roomData.type !== 'start' && roomData.type !== 'shop' && !roomData.cleared;
             this.loadRoom(hasEnemies, roomData.type, roomData.neighbors);
+
+            // 새로운 방이므로 별의 소리 초기화
+            this.stars = [];
         }
     }
 
@@ -350,7 +358,9 @@ class Game {
         if (roomType === 'boss') {
             // 보스방: 보스 적 생성 (중앙)
             let boss;
-            if (this.level === 2) {
+            if (this.level === 3) {
+                boss = this.spawnEnemy(roomWidth / 2, roomHeight / 2, 'stage3_boss');
+            } else if (this.level === 2) {
                 boss = this.spawnEnemy(roomWidth / 2, roomHeight / 2, 'hive_boss');
             } else {
                 boss = this.spawnEnemy(roomWidth / 2, roomHeight / 2, 'boss');
@@ -512,7 +522,7 @@ class Game {
             const roomHeight = this.room.canvasHeight;
             const centerX = roomWidth / 2;
             const centerY = roomHeight / 2;
-            const offset = 80;
+            const offset = 150; // 문에서 더 멀리 스폰 (80 → 150)
 
             switch (direction) {
                 case 'top':
@@ -990,6 +1000,22 @@ class Game {
                     this.isBossBGMPlaying = false;
                 }
 
+                // 2스테이지 보스(hive_boss) 처치 시 3스테이지로 진행
+                if (enemy.type === 'hive_boss') {
+                    console.log('2스테이지 보스 클리어! 3스테이지로 진행...');
+                    setTimeout(() => {
+                        this.nextStage();
+                    }, 2000); // 2초 후 다음 스테이지
+                }
+
+                // 3스테이지 보스(stage3_boss) 처치 시 게임 클리어
+                if (enemy.type === 'stage3_boss') {
+                    console.log('최종 보스 클리어! 게임 클리어!');
+                    setTimeout(() => {
+                        this.allStagesCleared();
+                    }, 3000); // 3초 후 게임 클리어 화면
+                }
+
                 this.enemies.splice(i, 1);
                 this.updateScore(10); // 적 처치 점수
             }
@@ -1323,6 +1349,11 @@ class Game {
                     }
                 } else {
                     // 일반 아이템 획득
+                    // 포션은 체력이 닳았을 때만 획득 가능
+                    if (item.type === 'potion' && this.player.health >= this.player.maxHealth) {
+                        continue; // 체력이 풀이면 포션 획득 불가
+                    }
+
                     this.pickedItemName = item.name;
                     this.pickedItemDescription = item.description;
                     this.showItemPickup = true;
@@ -1334,6 +1365,9 @@ class Game {
 
                     // 획득한 아이템 기록
                     this.collectedItems.add(item.type);
+
+                    // 아이템 비활성화 (제거하지 않음)
+                    item.active = false;
                 }
             }
         }
@@ -1609,4 +1643,5 @@ class Game {
         }
     }
 }
+
 

@@ -115,6 +115,23 @@ class Enemy {
                 this.starDropTable = [{ count: 0, chance: 0.1 }]; // 낮은 확률로 드랍
                 this.imageIdle.src = 'assets/images/boss/minion.jpg'; // 임시 이미지
                 break;
+            case 'stage3_boss':
+                this.speed = 80; // 중간 속도
+                this.maxHealth = 300; // 매우 높은 체력
+                this.damage = 3; // 강한 데미지
+                this.color = '#FF0000'; // 빨간색
+                this.bossName = '최종 보스'; // 보스 이름
+                this.width = 150;
+                this.height = 150;
+                this.starDropTable = [{ count: 50, chance: 1.0 }];
+                this.imageIdle.src = 'assets/images/boss/stage3_boss.png';
+                this.aiState = 'idle';
+                this.aiTimer = 0;
+                this.patternTimer = 0;
+                this.currentPattern = 0; // 패턴 번호
+                this.phaseThreshold = [200, 100]; // 페이즈 전환 체력
+                this.currentPhase = 1; // 1, 2, 3 페이즈
+                break;
         }
 
 
@@ -163,6 +180,15 @@ class Enemy {
             return; // 행동 하지 않음
         }
 
+        // 피격 애니메이션 타이머 (이미지 복구)
+        if (this.isHit) {
+            this.hitAnimTime += deltaTime;
+            if (this.hitAnimTime >= 0.2) { // 0.2초 후 원래 이미지로 복구
+                this.isHit = false;
+                this.currentImage = this.imageIdle;
+            }
+        }
+
         // 속도 부스트 타이머 업데이트
         if (this.speedBoostTimer > 0) {
             this.speedBoostTimer -= deltaTime;
@@ -180,6 +206,12 @@ class Enemy {
         // Hive Boss AI (웨이브 소환)
         if (this.type === 'hive_boss') {
             this.updateHiveBossAI(deltaTime, game);
+            return;
+        }
+
+        // Stage 3 Boss AI (화려한 패턴)
+        if (this.type === 'stage3_boss') {
+            this.updateStage3BossAI(deltaTime, game);
             return;
         }
 
@@ -366,7 +398,10 @@ class Enemy {
         // 피격 애니메이션 시작
         this.isHit = true;
         this.hitAnimTime = 0;
-        this.currentImage = this.imageHit;
+        // imageHit이 있으면 사용, 없으면 imageIdle 유지 (보스의 경우)
+        if (this.imageHit && this.imageHit.src && this.imageHit.complete) {
+            this.currentImage = this.imageHit;
+        }
 
         if (this.health <= 0) {
             this.active = false;
@@ -582,6 +617,142 @@ class Enemy {
 
                 console.log(`웨이브 ${this.waveNumber}/${this.maxWaves}: ${minionsToSpawn}마리 소환`);
             }
+        }
+    }
+
+    // Stage 3 Boss AI (화려한 패턴)
+    updateStage3BossAI(deltaTime, game) {
+        this.aiTimer += deltaTime;
+        this.patternTimer += deltaTime;
+
+        // 페이즈 체크
+        if (this.health <= this.phaseThreshold[1] && this.currentPhase < 3) {
+            this.currentPhase = 3;
+            console.log('최종 보스 페이즈 3 돌입!');
+            game.shakeScreen(15, 1.0);
+        } else if (this.health <= this.phaseThreshold[0] && this.currentPhase < 2) {
+            this.currentPhase = 2;
+            console.log('최종 보스 페이즈 2 돌입!');
+            game.shakeScreen(10, 0.8);
+        }
+
+        // 패턴 전환 (2초마다)
+        if (this.patternTimer >= 2.0) {
+            this.patternTimer = 0;
+            this.currentPattern = (this.currentPattern + 1) % 4;
+        }
+
+        // 패턴 실행
+        switch (this.currentPattern) {
+            case 0: // 원형 탄막
+                if (this.aiTimer >= 0.3) {
+                    this.aiTimer = 0;
+                    const bulletCount = 8 + this.currentPhase * 4;
+                    for (let i = 0; i < bulletCount; i++) {
+                        const angle = (Math.PI * 2 / bulletCount) * i;
+                        const projectile = new Projectile(
+                            this.x, this.y,
+                            Math.cos(angle), Math.sin(angle),
+                            this.damage
+                        );
+                        projectile.isEnemy = true;
+                        projectile.color = '#FF0000';
+                        game.projectiles.push(projectile);
+                    }
+                    game.spawnParticles(this.x, this.y, '#FF0000', 10);
+                }
+                break;
+
+            case 1: // 나선형 탄막
+                if (this.aiTimer >= 0.1) {
+                    this.aiTimer = 0;
+                    const spiralAngle = this.patternTimer * 5;
+                    for (let i = 0; i < 3; i++) {
+                        const angle = spiralAngle + (Math.PI * 2 / 3) * i;
+                        const projectile = new Projectile(
+                            this.x, this.y,
+                            Math.cos(angle), Math.sin(angle),
+                            this.damage
+                        );
+                        projectile.isEnemy = true;
+                        projectile.color = '#FF00FF';
+                        game.projectiles.push(projectile);
+                    }
+                }
+                break;
+
+            case 2: // 플레이어 추적 탄막
+                if (this.aiTimer >= 0.5) {
+                    this.aiTimer = 0;
+                    const dx = this.target.x - this.x;
+                    const dy = this.target.y - this.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist > 0) {
+                        const spreadCount = 3 + this.currentPhase;
+                        for (let i = 0; i < spreadCount; i++) {
+                            const spreadAngle = Math.atan2(dy, dx) + (i - spreadCount / 2) * 0.3;
+                            const projectile = new Projectile(
+                                this.x, this.y,
+                                Math.cos(spreadAngle), Math.sin(spreadAngle),
+                                this.damage
+                            );
+                            projectile.isEnemy = true;
+                            projectile.color = '#FFFF00';
+                            game.projectiles.push(projectile);
+                        }
+                        game.spawnParticles(this.x, this.y, '#FFFF00', 15);
+                    }
+                }
+                break;
+
+            case 3: // 폭발 패턴
+                if (this.aiTimer >= 1.0) {
+                    this.aiTimer = 0;
+                    // 랜덤 위치에 폭발
+                    for (let i = 0; i < 3 + this.currentPhase; i++) {
+                        const angle = Math.random() * Math.PI * 2;
+                        const dist = 100 + Math.random() * 150;
+                        const explosionX = this.x + Math.cos(angle) * dist;
+                        const explosionY = this.y + Math.sin(angle) * dist;
+
+                        // 폭발 지점에서 사방으로 탄막
+                        for (let j = 0; j < 8; j++) {
+                            const bulletAngle = (Math.PI * 2 / 8) * j;
+                            const projectile = new Projectile(
+                                explosionX, explosionY,
+                                Math.cos(bulletAngle), Math.sin(bulletAngle),
+                                this.damage
+                            );
+                            projectile.isEnemy = true;
+                            projectile.color = '#FF8800';
+                            game.projectiles.push(projectile);
+                        }
+                        game.spawnParticles(explosionX, explosionY, '#FF8800', 20);
+                        game.shakeScreen(5, 0.2);
+                    }
+                }
+                break;
+        }
+
+        // 보스 이동 (플레이어 주변을 맴돔)
+        const dx = this.target.x - this.x;
+        const dy = this.target.y - this.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist > 250) {
+            // 너무 멀면 접근
+            this.x += (dx / dist) * this.speed * deltaTime;
+            this.y += (dy / dist) * this.speed * deltaTime;
+        } else if (dist < 150) {
+            // 너무 가까우면 후퇴
+            this.x -= (dx / dist) * this.speed * deltaTime;
+            this.y -= (dy / dist) * this.speed * deltaTime;
+        } else {
+            // 적당한 거리에서 원을 그리며 이동
+            const orbitAngle = Math.atan2(dy, dx) + Math.PI / 2;
+            this.x += Math.cos(orbitAngle) * this.speed * deltaTime;
+            this.y += Math.sin(orbitAngle) * this.speed * deltaTime;
         }
     }
 }

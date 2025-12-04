@@ -40,6 +40,14 @@ class Room {
         this.speechDuration = 5; // 5초 표시
         this.speechCooldown = 3; // 3초 숨김
         this.isSpeechVisible = true;
+
+        // 바닥 텍스처
+        this.floorTexture = new Image();
+        this.floorTexture.src = 'assets/images/dungeon_floor.png';
+        this.floorTextureLoaded = false;
+        this.floorTexture.onload = () => {
+            this.floorTextureLoaded = true;
+        };
     }
 
     // 4방향 문 생성
@@ -207,8 +215,13 @@ class Room {
 
     // 방 그리기
     draw(ctx, deltaTime = 0) {
-        // 바닥
-        ctx.fillStyle = '#333';
+        // 바닥 (텍스처 타일링)
+        if (this.floorTextureLoaded) {
+            const pattern = ctx.createPattern(this.floorTexture, 'repeat');
+            ctx.fillStyle = pattern;
+        } else {
+            ctx.fillStyle = '#333';
+        }
         ctx.fillRect(
             this.bounds.left,
             this.bounds.top,
