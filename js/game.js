@@ -55,6 +55,10 @@ class Game {
         this.transitionCooldown = 0; // 전환 후 쿨다운
         this.transitionCooldownDuration = 1000; // 1초 쿨다운
 
+        // 게임 모드 선택
+        this.gameMode = null; // 'angko' or 'imdak'
+        this.showModeSelection = false; // 모드 선택 화면 표시 여부
+
         this.setupEventListeners();
         this.camera = { x: 0, y: 0 };
         this.mouseX = 0;
@@ -76,6 +80,16 @@ class Game {
             const rect = this.canvas.getBoundingClientRect();
             this.mouseX = e.clientX - rect.left;
             this.mouseY = e.clientY - rect.top;
+        });
+
+        // 마우스 클릭 (모드 선택용)
+        this.canvas.addEventListener('click', (e) => {
+            if (this.showModeSelection) {
+                const rect = this.canvas.getBoundingClientRect();
+                const clickX = e.clientX - rect.left;
+                const clickY = e.clientY - rect.top;
+                this.handleModeSelection(clickX, clickY);
+            }
         });
     }
 
@@ -101,6 +115,16 @@ class Game {
     }
 
     start() {
+        if (this.isRunning) return;
+
+        // 모드 선택 화면 표시
+        this.showModeSelection = true;
+        this.clear();
+        this.drawModeSelection();
+    }
+
+    // 모드 선택 후 실제 게임 시작
+    startGame() {
         if (this.isRunning) return;
 
         this.isRunning = true;
@@ -384,9 +408,13 @@ class Game {
                 { type: 'lilith_body', image: 'assets/images/items/1.png' },
                 { type: 'mystery_item', image: 'assets/images/items/3.png' },
                 { type: 'soda_komibol', image: 'assets/images/items/2.jpg' },
-                { type: 'montelli_gun', image: 'assets/images/items/5.webp' },
-                { type: 'murasama', image: 'assets/images/items/20.gif' }
+                { type: 'montelli_gun', image: 'assets/images/items/5.webp' }
             ];
+
+            // 임딱 모드: 2스테이지부터 무라사마 추가
+            if (this.gameMode === 'imdak' && this.level >= 2) {
+                items.push({ type: 'murasama', image: 'assets/images/items/20.gif' });
+            }
 
             // 이미 획득한 아이템 제외
             const availableItems = items.filter(item => !this.collectedItems.has(item.type));
@@ -425,9 +453,13 @@ class Game {
             const equipmentTypes = [
                 { type: 'mystery_item', image: 'assets/images/items/3.png' },
                 { type: 'soda_komibol', image: 'assets/images/items/2.jpg' },
-                { type: 'montelli_gun', image: 'assets/images/items/5.webp' },
-                { type: 'murasama', image: 'assets/images/items/20.gif' }
+                { type: 'montelli_gun', image: 'assets/images/items/5.webp' }
             ];
+
+            // 임딱 모드: 2스테이지부터 무라사마 추가
+            if (this.gameMode === 'imdak' && this.level >= 2) {
+                equipmentTypes.push({ type: 'murasama', image: 'assets/images/items/20.gif' });
+            }
 
             // 미보유 장비만 필터링
             const availableEquip = equipmentTypes.filter(item => !this.collectedItems.has(item.type));
@@ -471,6 +503,11 @@ class Game {
         } else {
             // 시작 방은 문을 열어둠
             this.room.openAllDoors();
+
+            // 앙코 모드: 1스테이지 시작 방에 무라사마 제공
+            if (this.gameMode === 'angko' && this.level === 1) {
+                this.spawnItem(this.canvas.width / 2, this.canvas.height / 2 + 100, 'murasama', 'assets/images/items/20.gif');
+            }
         }
 
         // 장애물 생성 (특수방 제외: 시작방, 보스방, 상점방, 아이템방, 석상방)
@@ -1629,6 +1666,102 @@ class Game {
         this.ctx.fillText('잠시 후 타이틀로 돌아갑니다', this.canvas.width / 2, this.canvas.height / 2 + 80);
 
         this.ctx.textAlign = 'left';
+    }
+
+    // 모드 선택 화면 그리기
+    drawModeSelection() {
+        // 배경
+        this.ctx.fillStyle = '#1a1a2e';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // 제목
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.font = 'bold 48px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('모드 선택', this.canvas.width / 2, 120);
+
+        // 앙코 모드 버튼
+        const angkoX = this.canvas.width / 2 - 180;
+        const angkoY = 250;
+        const buttonWidth = 150;
+        const buttonHeight = 200;
+
+        // 앙코 버튼 배경
+        this.ctx.fillStyle = '#ff6b9d';
+        this.ctx.fillRect(angkoX, angkoY, buttonWidth, buttonHeight);
+        this.ctx.strokeStyle = '#ffffff';
+        this.ctx.lineWidth = 3;
+        this.ctx.strokeRect(angkoX, angkoY, buttonWidth, buttonHeight);
+
+        // 앙코 텍스트
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.font = 'bold 28px Arial';
+        this.ctx.fillText('앙코 모드', angkoX + buttonWidth / 2, angkoY + 40);
+
+        this.ctx.font = '16px Arial';
+        this.ctx.fillText('(쉬움)', angkoX + buttonWidth / 2, angkoY + 70);
+
+        this.ctx.font = '14px Arial';
+        this.ctx.fillText('1스테이지', angkoX + buttonWidth / 2, angkoY + 110);
+        this.ctx.fillText('시작 시', angkoX + buttonWidth / 2, angkoY + 130);
+        this.ctx.fillText('무라사마', angkoX + buttonWidth / 2, angkoY + 150);
+        this.ctx.fillText('제공', angkoX + buttonWidth / 2, angkoY + 170);
+
+        // 임딱 모드 버튼
+        const imdakX = this.canvas.width / 2 + 30;
+        const imdakY = 250;
+
+        // 임딱 버튼 배경
+        this.ctx.fillStyle = '#c44569';
+        this.ctx.fillRect(imdakX, imdakY, buttonWidth, buttonHeight);
+        this.ctx.strokeStyle = '#ffffff';
+        this.ctx.lineWidth = 3;
+        this.ctx.strokeRect(imdakX, imdakY, buttonWidth, buttonHeight);
+
+        // 임딱 텍스트
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.font = 'bold 28px Arial';
+        this.ctx.fillText('임딱 모드', imdakX + buttonWidth / 2, imdakY + 40);
+
+        this.ctx.font = '16px Arial';
+        this.ctx.fillText('(어려움)', imdakX + buttonWidth / 2, imdakY + 70);
+
+        this.ctx.font = '14px Arial';
+        this.ctx.fillText('2스테이지', imdakX + buttonWidth / 2, imdakY + 110);
+        this.ctx.fillText('부터', imdakX + buttonWidth / 2, imdakY + 130);
+        this.ctx.fillText('상점/보물방', imdakX + buttonWidth / 2, imdakY + 150);
+        this.ctx.fillText('에서만 획득', imdakX + buttonWidth / 2, imdakY + 170);
+
+        // 안내 텍스트
+        this.ctx.fillStyle = '#aaaaaa';
+        this.ctx.font = '18px Arial';
+        this.ctx.fillText('모드를 선택하세요', this.canvas.width / 2, 500);
+    }
+
+    // 모드 선택 처리
+    handleModeSelection(clickX, clickY) {
+        const angkoX = this.canvas.width / 2 - 180;
+        const angkoY = 250;
+        const imdakX = this.canvas.width / 2 + 30;
+        const imdakY = 250;
+        const buttonWidth = 150;
+        const buttonHeight = 200;
+
+        // 앙코 모드 클릭
+        if (clickX >= angkoX && clickX <= angkoX + buttonWidth &&
+            clickY >= angkoY && clickY <= angkoY + buttonHeight) {
+            this.gameMode = 'angko';
+            this.showModeSelection = false;
+            this.startGame();
+        }
+
+        // 임딱 모드 클릭
+        if (clickX >= imdakX && clickX <= imdakX + buttonWidth &&
+            clickY >= imdakY && clickY <= imdakY + buttonHeight) {
+            this.gameMode = 'imdak';
+            this.showModeSelection = false;
+            this.startGame();
+        }
     }
 
     gameOver() {
