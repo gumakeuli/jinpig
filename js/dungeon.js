@@ -184,31 +184,28 @@ class DungeonGenerator {
         const distances = this.calculateDistances();
 
         // 보스방: 시작점에서 가장 먼 방 (최소 거리 2 이상)
-        // 2스테이지는 보스방 없음
-        if (this.level !== 2) {
-            // 1. 막다른 방(endRooms) 중에서 가장 먼 것 찾기
-            let bossCandidates = this.endRooms.filter(id => distances.get(id) > 1);
+        // 1. 막다른 방(endRooms) 중에서 가장 먼 것 찾기
+        let bossCandidates = this.endRooms.filter(id => distances.get(id) > 1);
 
-            // 2. 만약 적절한 막다른 방이 없으면, 전체 방 중에서 가장 먼 것 찾기
-            if (bossCandidates.length === 0) {
-                const allRooms = Array.from(this.rooms.keys());
-                bossCandidates = allRooms.filter(id => distances.get(id) > 1);
-            }
+        // 2. 만약 적절한 막다른 방이 없으면, 전체 방 중에서 가장 먼 것 찾기
+        if (bossCandidates.length === 0) {
+            const allRooms = Array.from(this.rooms.keys());
+            bossCandidates = allRooms.filter(id => distances.get(id) > 1);
+        }
 
-            // 거리순 내림차순 정렬
-            bossCandidates.sort((a, b) => distances.get(b) - distances.get(a));
+        // 거리순 내림차순 정렬
+        bossCandidates.sort((a, b) => distances.get(b) - distances.get(a));
 
-            if (bossCandidates.length > 0) {
-                this.bossRoom = bossCandidates[0];
-                const room = this.rooms.get(this.bossRoom);
-                room.type = 'boss';
-                this.grid[this.bossRoom].type = 'boss';
+        if (bossCandidates.length > 0) {
+            this.bossRoom = bossCandidates[0];
+            const room = this.rooms.get(this.bossRoom);
+            room.type = 'boss';
+            this.grid[this.bossRoom].type = 'boss';
 
-                // 보스방은 endRooms에서 제거 (중복 방지)
-                const index = this.endRooms.indexOf(this.bossRoom);
-                if (index !== -1) {
-                    this.endRooms.splice(index, 1);
-                }
+            // 보스방은 endRooms에서 제거 (중복 방지)
+            const index = this.endRooms.indexOf(this.bossRoom);
+            if (index !== -1) {
+                this.endRooms.splice(index, 1);
             }
         }
 

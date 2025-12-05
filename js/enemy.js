@@ -257,26 +257,36 @@ class Enemy {
                 this.y += dirY * this.speed * deltaTime;
             }
 
-            // 보스 패턴: 발사
+            // 보스 패턴: 회전 나선형 탄막 + 페이즈 시스템
             if (this.type === 'boss' && game) {
                 this.shootTimer += deltaTime;
-                if (this.shootTimer >= this.shootInterval) {
+
+                // 페이즈 체크 (체력에 따라)
+                const healthPercent = this.health / this.maxHealth;
+                let currentPhase = 1;
+                if (healthPercent <= 0.33) currentPhase = 3;
+                else if (healthPercent <= 0.66) currentPhase = 2;
+
+                // 페이즈별 발사 간격
+                const phaseInterval = currentPhase === 3 ? 0.15 : (currentPhase === 2 ? 0.2 : 0.3);
+
+                if (this.shootTimer >= phaseInterval) {
                     this.shootTimer = 0;
 
-                    // 플레이어 방향으로 발사
-                    // Projectile(x, y, vx, vy, damage, isEnemyProjectile)
-                    // Projectile 생성자가 isEnemyProjectile을 지원하는지 확인 필요. 
-                    // 일단 기본 Projectile을 사용하고 game.js에서 적 발사체 처리를 추가하거나, 
-                    // Projectile에 속성을 추가해야 함.
-                    // 여기서는 일단 발사체 생성만 함.
+                    // 회전 각도 증가 (나선형 효과)
+                    if (!this.bossRotation) this.bossRotation = 0;
+                    this.bossRotation += 0.3; // 회전 속도
 
-                    // 8방향 발사
-                    const directions = [
-                        { x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 },
-                        { x: 0.7, y: 0.7 }, { x: 0.7, y: -0.7 }, { x: -0.7, y: 0.7 }, { x: -0.7, y: -0.7 }
-                    ];
+                    // 페이즈별 탄막 개수
+                    const bulletCount = currentPhase === 3 ? 12 : (currentPhase === 2 ? 10 : 8);
 
-                    for (const dir of directions) {
+                    for (let i = 0; i < bulletCount; i++) {
+                        const angle = (Math.PI * 2 / bulletCount) * i + this.bossRotation;
+                        const dir = {
+                            x: Math.cos(angle),
+                            y: Math.sin(angle)
+                        };
+
                         const projectile = new Projectile(
                             this.x,
                             this.y,
@@ -284,11 +294,32 @@ class Enemy {
                             dir.y,
                             this.damage
                         );
-                        // 적 발사체임을 표시 (Projectile 클래스 수정 필요할 수 있음)
                         projectile.isEnemy = true;
-                        projectile.color = '#ff00ff'; // 보라색 탄환
+                        projectile.color = currentPhase === 3 ? '#ff0000' : (currentPhase === 2 ? '#ff8800' : '#ff00ff');
                         game.projectiles.push(projectile);
                     }
+
+                    // 페이즈 3: 추가 플레이어 추적 탄환
+                    if (currentPhase === 3) {
+                        const dx = this.target.x - this.x;
+                        const dy = this.target.y - this.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist > 0) {
+                            const projectile = new Projectile(
+                                this.x,
+                                this.y,
+                                dx / dist,
+                                dy / dist,
+                                this.damage
+                            );
+                            projectile.isEnemy = true;
+                            projectile.color = '#ffff00';
+                            game.projectiles.push(projectile);
+                        }
+                    }
+
+                    // 파티클 효과
+                    game.spawnParticles(this.x, this.y, projectile.color, 5);
                 }
             }
         }

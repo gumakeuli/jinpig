@@ -434,26 +434,28 @@ class Player {
 
     // 아이템 사용 가능 여부
     canUseItem() {
-        return this.itemSlots[this.currentSlot] && this.itemCooldown <= 0;
+        const slot = this.itemSlots[this.currentSlot];
+        return slot && slot.type && this.itemCooldown <= 0;
     }
 
     // 현재 활성화된 아이템 가져오기
     getActiveItem() {
-        return this.itemSlots[this.currentSlot];
+        const slot = this.itemSlots[this.currentSlot];
+        return slot ? slot.type : null;
     }
 
     // 슬롯에 아이템 추가
-    addItemToSlot(itemType) {
+    addItemToSlot(itemType, itemImage = null) {
         // 빈 슬롯 찾기
         for (let i = 0; i < this.itemSlots.length; i++) {
             if (this.itemSlots[i] === null) {
-                this.itemSlots[i] = itemType;
+                this.itemSlots[i] = { type: itemType, image: itemImage };
                 console.log(`슬롯 ${i}에 ${itemType} 추가`);
                 return;
             }
         }
         // 모든 슬롯이 가득 차면 현재 슬롯 덮어쓰기
-        this.itemSlots[this.currentSlot] = itemType;
+        this.itemSlots[this.currentSlot] = { type: itemType, image: itemImage };
         console.log(`슬롯 ${this.currentSlot}에 ${itemType} 덮어쓰기`);
     }
 

@@ -213,15 +213,27 @@ class UI {
             ctx.textAlign = 'left';
             ctx.fillText(`${i + 1}`, x + 4, y + 14);
 
-            // 아이템 이름 표시
-            const itemType = player.itemSlots[i];
-            if (itemType) {
-                ctx.font = '10px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillStyle = '#ffffff';
-                // 아이템 타입에 따라 간단한 아이콘 텍스트 표시
-                let itemName = itemType === 'slash' ? '검' : itemType === 'murasama' ? '무' : '?';
-                ctx.fillText(itemName, x + slotSize / 2, y + slotSize / 2 + 5);
+            // 아이템 표시
+            const itemSlot = player.itemSlots[i];
+            if (itemSlot) {
+                // 아이템 이미지 표시
+                if (itemSlot.image && itemSlot.image.complete) {
+                    const imgSize = 40;
+                    ctx.drawImage(
+                        itemSlot.image,
+                        x + (slotSize - imgSize) / 2,
+                        y + (slotSize - imgSize) / 2,
+                        imgSize,
+                        imgSize
+                    );
+                } else {
+                    // 이미지 없으면 텍스트로 표시
+                    ctx.font = '10px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillStyle = '#ffffff';
+                    let itemName = itemSlot.type === 'slash' ? '검' : itemSlot.type === 'murasama' ? '무' : '?';
+                    ctx.fillText(itemName, x + slotSize / 2, y + slotSize / 2 + 5);
+                }
             }
         }
 

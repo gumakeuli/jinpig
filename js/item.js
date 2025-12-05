@@ -125,7 +125,7 @@ class Item {
                 this.description = ''; // 설명 없음
                 this.color = '#ff0000'; // 빨간색
                 this.effect = (player) => {
-                    player.addItemToSlot('murasama');
+                    player.addItemToSlot('murasama', this.itemImage);
                     console.log('무라사마 획득!');
                 };
                 break;

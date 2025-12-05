@@ -471,13 +471,10 @@ class Game {
         } else {
             // 시작 방은 문을 열어둠
             this.room.openAllDoors();
-
-            // 테스트용: 시작 방에 무라사마 생성
-            this.spawnItem(this.canvas.width / 2, this.canvas.height / 2 + 100, 'murasama', 'assets/images/items/20.gif');
         }
 
-        // 장애물 생성 (시작방, 보스방, 상점방 제외)
-        if (roomType !== 'start' && roomType !== 'boss' && roomType !== 'shop') {
+        // 장애물 생성 (특수방 제외: 시작방, 보스방, 상점방, 아이템방, 석상방)
+        if (roomType !== 'start' && roomType !== 'boss' && roomType !== 'shop' && roomType !== 'treasure' && roomType !== 'altar') {
             this.room.generateObstacles();
         }
     }
@@ -1039,10 +1036,6 @@ class Game {
             if (!this.stars[i].active) {
                 this.stars.splice(i, 1);
             }
-            // 비활성 별 제거
-            if (!this.stars[i].active) {
-                this.stars.splice(i, 1);
-            }
         }
 
         // 파티클 업데이트
@@ -1103,6 +1096,9 @@ class Game {
                             // 플레이어 주변에 드롭
                             this.spawnStar(this.player.x + (Math.random() - 0.5) * 50, this.player.y + (Math.random() - 0.5) * 50);
                         }
+
+                        // 방 클리어 후 0.5초 동안 문 통과 불가
+                        this.transitionCooldown = 500; // 0.5초
                     }
 
                     // 보스방 클리어 시 포탈 생성
@@ -1328,6 +1324,12 @@ class Game {
             if (checkCollision(playerBounds, itemBounds)) {
                 // 가격이 있는 아이템 (상점)
                 if (item.price > 0) {
+                    // 포션은 체력이 최대일 때 구매 불가
+                    if (item.type === 'potion' && this.player.health >= this.player.maxHealth) {
+                        console.log('체력이 최대입니다! 포션을 구매할 수 없습니다.');
+                        continue;
+                    }
+
                     if (this.starCount >= item.price) {
                         // 구매 성공
                         this.starCount -= item.price;
@@ -1335,6 +1337,7 @@ class Game {
                         // 아이템 정보 저장 (화면 표시용)
                         this.pickedItemName = item.name;
                         this.pickedItemDescription = item.description;
+                        this.pickedItemImage = item.itemImage; // 이미지 추가
                         this.showItemPickup = true;
                         this.itemPickupTimer = 0;
 
@@ -1356,6 +1359,7 @@ class Game {
 
                     this.pickedItemName = item.name;
                     this.pickedItemDescription = item.description;
+                    this.pickedItemImage = item.itemImage; // 이미지 추가
                     this.showItemPickup = true;
                     this.itemPickupTimer = 0;
 
@@ -1532,11 +1536,25 @@ class Game {
             this.ctx.fillStyle = '#fff';
             this.ctx.font = 'bold 24px Arial';
             this.ctx.textAlign = 'center';
-            this.ctx.fillText(`획득: ${this.pickedItemName}`, this.canvas.width / 2, 135);
 
-            this.ctx.font = '16px Arial';
+            // 아이템 이미지 표시
+            if (this.pickedItemImage && this.pickedItemImage.complete) {
+                const imgSize = 60;
+                this.ctx.drawImage( // Changed ctx to this.ctx
+                    this.pickedItemImage,
+                    this.canvas.width / 2 - imgSize / 2,
+                    110,
+                    imgSize,
+                    imgSize
+                );
+            }
+
+            // 아이템 이름 (이미지 아래)
+            this.ctx.fillText(`${this.pickedItemName}`, this.canvas.width / 2, 185);
+
+            this.ctx.font = '14px Arial';
             this.ctx.fillStyle = '#ccc';
-            this.ctx.fillText(this.pickedItemDescription, this.canvas.width / 2, 160);
+            this.ctx.fillText(this.pickedItemDescription, this.canvas.width / 2, 205);
             this.ctx.restore();
         }
 
