@@ -2,8 +2,8 @@ class Altar {
     constructor(x, y) {
         this.x = x;
         this.y = y;
-        this.width = 80;
-        this.height = 80;
+        this.width = 120; // 80 -> 120으로 증가
+        this.height = 120; // 80 -> 120으로 증가
         this.active = true;
         this.used = false;
 
