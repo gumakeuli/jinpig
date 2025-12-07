@@ -86,6 +86,9 @@ class Player {
         this.invincibleTime = 0;
         this.invincibleDuration = 1000; // 1초
 
+        // 무적 모드 (치트)
+        this.godMode = false;
+
         // 사용 아이템 슬롯 시스템
         this.itemSlots = [null, null]; // 2개 슬롯
         this.currentSlot = 0; // 현재 선택된 슬롯 (0 or 1)
@@ -93,11 +96,22 @@ class Player {
         this.itemMaxCooldown = 2; // 2초 쿨다운 (후딜레이 증가)
 
         this.keys.space = false;
-        this.keys.tab = false;
+        this.keys.q = false;
+        this.keys.shift = false;
 
         // 아이템 효과 플래그
         this.hasSodaKomibol = false;
         this.hasMontelliGun = false;
+
+        // 대쉬 능력
+        this.hasDash = false; // 2스테이지에서 획득
+        this.isDashing = false;
+        this.dashDuration = 0.15; // 대쉬 지속시간 (0.15초)
+        this.dashTimer = 0;
+        this.dashCooldown = 0;
+        this.dashCooldownMax = 1.0; // 1초 쿨다운
+        this.dashSpeed = 400; // 대쉬 속도 (너프)
+        this.dashInvincibleDuration = 0.5; // 0.5초 무적
     }
 
     // 입력 처리
@@ -138,12 +152,17 @@ class Player {
             case 'Spacebar':
                 this.keys.space = true;
                 break;
-            // 슬롯 전환 - Tab
-            case 'Tab':
-                this.keys.tab = true;
+            // 슬롯 전환 - Q
+            case 'q':
+            case 'Q':
+                this.keys.q = true;
                 // 슬롯 전환
                 this.currentSlot = (this.currentSlot + 1) % 2;
                 console.log(`슬롯 전환: ${this.currentSlot}`);
+                break;
+            // 대쉬 - Shift
+            case 'Shift':
+                this.keys.shift = true;
                 break;
         }
     }
@@ -185,9 +204,14 @@ class Player {
             case 'Spacebar':
                 this.keys.space = false;
                 break;
-            // 슬롯 전환 - Tab
-            case 'Tab':
-                this.keys.tab = false;
+            // 슬롯 전환 - Q
+            case 'q':
+            case 'Q':
+                this.keys.q = false;
+                break;
+            // 대쉬 - Shift
+            case 'Shift':
+                this.keys.shift = false;
                 break;
         }
     }
@@ -246,6 +270,25 @@ class Player {
         // 아이템 쿨다운 업데이트
         if (this.itemCooldown > 0) {
             this.itemCooldown -= deltaTime;
+        }
+
+        // 대쉬 쿨다운 업데이트
+        if (this.dashCooldown > 0) {
+            this.dashCooldown -= deltaTime;
+        }
+
+        // 대쉬 처리
+        if (this.isDashing) {
+            this.dashTimer += deltaTime;
+            if (this.dashTimer >= this.dashDuration) {
+                this.isDashing = false;
+                this.dashTimer = 0;
+            }
+        }
+
+        // 대쉬 시작 (Shift 키)
+        if (this.hasDash && this.keys.shift && !this.isDashing && this.dashCooldown <= 0) {
+            this.startDash();
         }
     }
 
@@ -339,6 +382,8 @@ class Player {
 
     // 데미지 받기
     takeDamage(amount) {
+        // 무적 모드 체크
+        if (this.godMode) return false;
         if (this.invincible) return false;
 
         // 행운에 따른 회피 확률 체크
@@ -462,5 +507,63 @@ class Player {
     // 아이템 사용 처리
     useItem(cooldown = null) {
         this.itemCooldown = cooldown !== null ? cooldown : this.itemMaxCooldown;
+    }
+
+    // 대쉬 시작
+    startDash() {
+        this.isDashing = true;
+        this.dashTimer = 0;
+        this.dashCooldown = this.dashCooldownMax;
+
+        // 대쉬 방향 결정 (현재 바라보는 방향 또는 이동 방향)
+        let dashDx = 0;
+        let dashDy = 0;
+
+        // 이동 중이면 이동 방향으로 대쉬
+        if (this.keys.w) dashDy = -1;
+        else if (this.keys.s) dashDy = 1;
+
+        if (this.keys.a) dashDx = -1;
+        else if (this.keys.d) dashDx = 1;
+
+        // 이동하지 않으면 마지막 방향으로 대쉬
+        if (dashDx === 0 && dashDy === 0) {
+            switch (this.lastDirection) {
+                case 'w':
+                case 'up':
+                    dashDy = -1;
+                    break;
+                case 's':
+                case 'down':
+                    dashDy = 1;
+                    break;
+                case 'a':
+                case 'left':
+                    dashDx = -1;
+                    break;
+                case 'd':
+                case 'right':
+                    dashDx = 1;
+                    break;
+                default:
+                    dashDy = 1; // 기본값: 아래
+            }
+        }
+
+        // 대각선 정규화
+        if (dashDx !== 0 && dashDy !== 0) {
+            const length = Math.sqrt(dashDx * dashDx + dashDy * dashDy);
+            dashDx /= length;
+            dashDy /= length;
+        }
+
+        // 대쉬 이동
+        this.x += dashDx * this.dashSpeed * this.dashDuration;
+        this.y += dashDy * this.dashSpeed * this.dashDuration;
+
+        // 무적 시간 설정
+        this.invincible = true;
+        this.invincibleTime = 0;
+        this.invincibleDuration = this.dashInvincibleDuration * 1000; // 밀리초로 변환
     }
 }

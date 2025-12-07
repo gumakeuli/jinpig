@@ -30,8 +30,8 @@ class UI {
         // 아이템 슬롯 표시
         this.drawItemSlots(ctx, player);
 
-        // 조작법 힌트 (게임 하단)
-        this.drawControls(ctx);
+        // 조작법 힌트 (게임 하단) - 제거됨
+        // this.drawControls(ctx);
 
         // 보스 체력바
         if (boss && typeof boss.health === 'number' && typeof boss.maxHealth === 'number') {

@@ -213,6 +213,13 @@ class Room {
         return null;
     }
 
+    // 모든 문 열기 (적 처치 시)
+    openAllDoors() {
+        for (const direction in this.doors) {
+            this.doors[direction].open();
+        }
+    }
+
     // 방 그리기
     draw(ctx, deltaTime = 0) {
         // 바닥 (텍스처 타일링)

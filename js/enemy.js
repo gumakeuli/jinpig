@@ -26,6 +26,9 @@ class Enemy {
         this.hitAnimTime = 0;
         this.hitAnimDuration = 0.5; // 0.5초
 
+        // 소환 상태 (기본값 false)
+        this.isSpawning = false;
+
         // 타입별 스탯 설정
         switch (type) {
             case 'basic':
@@ -92,28 +95,64 @@ class Enemy {
                 this.damage = 0; // 직접 공격 안함
                 this.color = '#4B0082'; // 인디고
                 this.bossName = '벌집 수호자'; // 보스 이름
-                this.width = 150;
+                this.width = 200;
                 this.height = 150;
                 this.starDropTable = [{ count: 30, chance: 1.0 }];
-                this.imageIdle.src = 'assets/images/boss/hive.jpg';
-                this.aiState = 'spawning';
+                this.imageIdle.src = 'assets/images/boss/3.webp';
+                this.aiState = 'idle';
                 this.aiTimer = 0;
-                // 웨이브 시스템
-                this.waveNumber = 0;
-                this.maxWaves = 10; // 총 10웨이브
-                this.minionsPerWave = 3; // 웨이브당 잡몹 수
-                this.waveInterval = 5.0; // 웨이브 간격 (초)
-                this.currentWaveMinions = 0; // 현재 웨이브에서 소환된 잡몹 수
+
+                // 공유 체력 시스템
+                this.minions = []; // 쫄몹 참조
+                this.sharedHealthPool = null; // 공유 체력 객체 (game에서 설정)
+
+                // 변신 시스템
+                this.transformationPhase = 0; // 0: 기본, 1: 60% 변신 완료, 2: 40% 추가 소환
+                this.isTransforming = false;
+                this.transformTimer = 0;
+                this.transformDuration = 3.0; // 3초 변신
                 break;
-            case 'hive_minion':
-                this.speed = 120; // 빠름
-                this.maxHealth = 1; // 물몸
+            case 'hive_left_minion':
+                // 왼쪽 쫄몹 (4번 → 8번 → 7번)
+                this.speed = 60;
+                this.maxHealth = 200; // 공유 체력
                 this.damage = 1;
-                this.color = '#00FF00'; // 라임색
-                this.width = 32;
-                this.height = 32;
-                this.starDropTable = [{ count: 0, chance: 0.1 }]; // 낮은 확률로 드랍
-                this.imageIdle.src = 'assets/images/boss/minion.jpg'; // 임시 이미지
+                this.color = '#FF6B6B';
+                this.width = 100; // 큰 크기
+                this.height = 100;
+                this.starDropTable = [{ count: 0, chance: 0 }];
+                this.imageIdle.src = 'assets/images/4.png';
+                this.transformImage = 'assets/images/8.png'; // 변신 중
+                this.finalImage = 'assets/images/7.png'; // 변신 완료
+                this.isTransformed = false;
+                this.sharedHealthPool = null;
+                break;
+            case 'hive_right_minion':
+                // 오른쪽 쫄몹 (5번 → 9번 → 6번)
+                this.speed = 60;
+                this.maxHealth = 200; // 공유 체력
+                this.damage = 1;
+                this.color = '#6B6BFF';
+                this.width = 100; // 큰 크기
+                this.height = 100;
+                this.starDropTable = [{ count: 0, chance: 0 }];
+                this.imageIdle.src = 'assets/images/5.png';
+                this.transformImage = 'assets/images/9.png'; // 변신 중
+                this.finalImage = 'assets/images/6.png'; // 변신 완료
+                this.isTransformed = false;
+                this.sharedHealthPool = null;
+                break;
+            case 'hive_final_minion':
+                // 40% HP에서 등장하는 쫄몹 (10번)
+                this.speed = 80;
+                this.maxHealth = 200; // 공유 체력
+                this.damage = 2;
+                this.color = '#FFD700';
+                this.width = 120;
+                this.height = 120;
+                this.starDropTable = [{ count: 0, chance: 0 }];
+                this.imageIdle.src = 'assets/images/10.png';
+                this.sharedHealthPool = null;
                 break;
             case 'stage3_boss':
                 this.speed = 80; // 중간 속도
@@ -212,6 +251,11 @@ class Enemy {
         // Stage 3 Boss AI (화려한 패턴)
         if (this.type === 'stage3_boss') {
             this.updateStage3BossAI(deltaTime, game);
+            return;
+        }
+
+        // 변신 중이면 이동/공격 중지
+        if (this.aiState === 'transforming') {
             return;
         }
 
@@ -785,5 +829,28 @@ class Enemy {
             this.x += Math.cos(orbitAngle) * this.speed * deltaTime;
             this.y += Math.sin(orbitAngle) * this.speed * deltaTime;
         }
+    }
+    // 데미지 받기
+    takeDamage(amount) {
+        // 공유 체력 시스템
+        if (this.sharedHealthPool) {
+            this.sharedHealthPool.current -= amount;
+            // 체력 동기화는 update에서 처리하거나 여기서 모든 공유 엔티티를 찾아서 업데이트해야 함
+            // 간단하게 자신의 체력만 업데이트하고, 나머지는 Game.update에서 동기화
+            this.health = this.sharedHealthPool.current;
+        } else {
+            this.health -= amount;
+        }
+
+        // 피격 효과
+        this.isHit = true;
+        this.hitAnimTime = 0;
+        // this.currentImage = this.imageHit; // 피격 이미지 있다면 사용
+
+        // 사망 체크
+        if (this.sharedHealthPool) {
+            return this.sharedHealthPool.current <= 0;
+        }
+        return this.health <= 0;
     }
 }

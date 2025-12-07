@@ -41,6 +41,14 @@ class GifSlash {
     update(deltaTime, playerX, playerY, cameraX, cameraY) {
         this.timer += deltaTime;
 
+        // 페이즈 변경 체크
+        const currentPhase = this.getCurrentPhase();
+        if (this.lastPhase !== currentPhase) {
+            // 새 페이즈 진입 시 타격 리스트 초기화 (다시 때릴 수 있음)
+            this.hitEnemies = [];
+            this.lastPhase = currentPhase;
+        }
+
         // 플레이어를 따라다니기 (플레이어 기준으로 일정 거리 유지)
         // 오른쪽 아래로 오프셋 추가
         this.x = playerX + Math.cos(this.angle) * this.orbitRadius + 20;

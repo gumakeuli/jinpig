@@ -243,15 +243,15 @@ class Obstacle {
 
     // 플레이어와의 상호작용
     interactWithPlayer(player) {
-        if (!this.active) return;
+        if (!this.active) return 0;
 
         if (this.type === 'cobweb' && this.destroyOnTouch) {
             // 거미줄 파괴
             this.active = false;
         }
 
-        if (this.type === 'spike' && this.isUp && this.dealsDamage) {
-            // 가시 데미지
+        if (this.type === 'spike' && this.dealsDamage) {
+            // 가시 데미지 (항상 적용, 애니메이션 상태와 무관)
             return this.damage;
         }
 

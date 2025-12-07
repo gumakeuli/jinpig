@@ -44,7 +44,8 @@
             height: 100%;
             text-align: center;
             z-index: 10;
-            pointer-events: none;
+            text-align: center;
+            z-index: 10;
             background: radial-gradient(circle at center, #2b1055 0%, #7597de 100%);
             display: flex;
             flex-direction: column;
@@ -171,6 +172,11 @@
             <div class="game-title" id="gameTitle">
                 <h1>웨이브즈작</h1>
                 <button id="startBtn">GAME START</button>
+            </div>
+            <div id="command-input-container"
+                style="display: none; position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); width: 50%; z-index: 100;">
+                <input type="text" id="command-input" placeholder="명령어를 입력하세요..."
+                    style="width: 100%; padding: 10px; font-size: 18px; background: rgba(0, 0, 0, 0.8); color: white; border: 2px solid #0fa; border-radius: 5px; outline: none;">
             </div>
         </div>
     </div>

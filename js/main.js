@@ -3,18 +3,35 @@ let game;
 
 // DOM이 로드되면 실행
 document.addEventListener('DOMContentLoaded', () => {
-    // 캔버스 요소 가져오기
-    const canvas = document.getElementById('gameCanvas');
+    try {
+        // 캔버스 요소 가져오기
+        const canvas = document.getElementById('gameCanvas');
 
-    // 게임 인스턴스 생성
-    game = new Game(canvas);
+        // Game 클래스가 정의되어 있는지 확인
+        if (typeof Game === 'undefined') {
+            alert('게임 초기화 오류: Game 클래스를 찾을 수 없습니다.\njs/game.js 파일이 제대로 로드되지 않았습니다.');
+            console.error('Game class is not defined. Check if js/game.js loaded correctly.');
+            return;
+        }
 
-    // 초기 화면 그리기
-    game.drawStartScreen();
+        // 게임 인스턴스 생성
+        game = new Game(canvas);
 
-    // 버튼 이벤트 리스너 설정
-    setupButtons();
+        // 초기 화면 그리기
+        game.drawStartScreen();
+
+        // 버튼 이벤트 리스너 설정
+        setupButtons();
+    } catch (error) {
+        console.error('Initialization Error:', error);
+        alert('게임 초기화 오류: ' + error.message + '\n' + error.stack);
+    }
 });
+
+window.onerror = function (message, source, lineno, colno, error) {
+    alert('Global Error: ' + message + '\nLine: ' + lineno + '\nSource: ' + source);
+    return false;
+};
 
 function setupButtons() {
     const startBtn = document.getElementById('startBtn');
@@ -22,9 +39,14 @@ function setupButtons() {
 
     // 게임 시작 버튼
     startBtn.addEventListener('click', () => {
-        game.start();
-        // 타이틀 화면 숨기기
-        gameTitle.style.display = 'none';
+        console.log('Game Start Button Clicked');
+        if (game) {
+            game.start();
+            // 타이틀 화면 숨기기
+            gameTitle.style.display = 'none';
+        } else {
+            console.error('Game instance not initialized');
+        }
     });
 
     // 엔터키로 게임 시작
@@ -32,10 +54,6 @@ function setupButtons() {
         if (e.key === 'Enter' && gameTitle.style.display !== 'none') {
             game.start();
             gameTitle.style.display = 'none';
-        }
-        // Tab 키 기본 동작 방지 (슬롯 전환용)
-        if (e.key === 'Tab') {
-            e.preventDefault();
         }
     });
 }

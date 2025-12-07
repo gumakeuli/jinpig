@@ -58,6 +58,7 @@ class Game {
         // 게임 모드 선택
         this.gameMode = null; // 'angko' or 'imdak'
         this.showModeSelection = false; // 모드 선택 화면 표시 여부
+        this.showControlsScreen = false; // 조작법 화면 표시 여부
 
         this.setupEventListeners();
         this.camera = { x: 0, y: 0 };
@@ -78,22 +79,48 @@ class Game {
         // 마우스 이동 추적
         this.canvas.addEventListener('mousemove', (e) => {
             const rect = this.canvas.getBoundingClientRect();
-            this.mouseX = e.clientX - rect.left;
-            this.mouseY = e.clientY - rect.top;
+            const scaleX = this.canvas.width / rect.width;
+            const scaleY = this.canvas.height / rect.height;
+
+            this.mouseX = (e.clientX - rect.left) * scaleX;
+            this.mouseY = (e.clientY - rect.top) * scaleY;
         });
 
         // 마우스 클릭 (모드 선택용)
         this.canvas.addEventListener('click', (e) => {
             if (this.showModeSelection) {
                 const rect = this.canvas.getBoundingClientRect();
-                const clickX = e.clientX - rect.left;
-                const clickY = e.clientY - rect.top;
+                const scaleX = this.canvas.width / rect.width;
+                const scaleY = this.canvas.height / rect.height;
+
+                const clickX = (e.clientX - rect.left) * scaleX;
+                const clickY = (e.clientY - rect.top) * scaleY;
+
                 this.handleModeSelection(clickX, clickY);
             }
         });
     }
 
     handleKeyDown(e) {
+        // 조작법 화면에서 아무 키나 누르면 게임 시작
+        if (this.showControlsScreen) {
+            this.showControlsScreen = false;
+            this.startGame();
+            return;
+        }
+
+        if (!this.isRunning && e.key !== 'Enter') return;
+
+        // 명령어 입력 토글 (Tab)
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            this.toggleCommandInput();
+            return;
+        }
+
+        // 명령어 입력 중이면 게임 조작 차단
+        if (this.isCommandInputVisible) return;
+
         if (!this.isRunning || this.isPaused) return;
 
         // 방향키와 WASD 기본 동작 방지
@@ -115,6 +142,7 @@ class Game {
     }
 
     start() {
+        console.log('Game.start() called');
         if (this.isRunning) return;
 
         // 모드 선택 화면 표시
@@ -208,10 +236,20 @@ class Game {
             this.isBossBGMPlaying = false;
         }
 
-        // 보스 BGM
-        this.bossBGM = new Audio('assets/sounds/홍북이의 노래.mp3');
-        this.bossBGM.loop = true;
-        this.bossBGM.volume = 0.5;
+        // 보스 BGM (스테이지별)
+        this.bossBGMs = {
+            1: new Audio('assets/sounds/홍북이의 노래.mp3'),
+            2: new Audio('assets/sounds/플뢰르 드 리스 노래.mp3'),
+            3: new Audio('assets/sounds/홍북이의 노래.mp3') // 3스테이지는 홍북이 노래
+        };
+
+        // 모든 BGM 무한 반복 설정
+        for (let level in this.bossBGMs) {
+            this.bossBGMs[level].loop = true;
+            this.bossBGMs[level].volume = 0.5;
+        }
+
+        this.bossBGM = null;
         this.isBossBGMPlaying = false;
 
         // 보스 인트로
@@ -235,6 +273,10 @@ class Game {
         this.lastTime = performance.now();
 
         this.clear();
+
+        // 명령어 입력 시스템 초기화
+        this.isCommandInputVisible = false;
+        this.setupCommandInput();
     }
 
     // 이웃 셀 ID를 방향으로 변환
@@ -252,6 +294,212 @@ class Game {
         }
 
         return directions;
+    }
+
+    // 명령어 입력 시스템 설정
+    setupCommandInput() {
+        const container = document.getElementById('command-input-container');
+        const input = document.getElementById('command-input');
+
+        if (!container || !input) return;
+
+        // 입력 필드 키 이벤트
+        input.addEventListener('keydown', (e) => {
+            e.stopPropagation(); // 게임 조작 방지
+
+            if (e.key === 'Enter') {
+                this.executeCommand(input.value);
+                input.value = '';
+                this.toggleCommandInput(false);
+            } else if (e.key === 'Escape') {
+                input.value = '';
+                this.toggleCommandInput(false);
+            }
+        });
+    }
+
+    // 명령어 입력 토글
+    toggleCommandInput(show) {
+        const container = document.getElementById('command-input-container');
+        const input = document.getElementById('command-input');
+
+        if (show === undefined) {
+            this.isCommandInputVisible = !this.isCommandInputVisible;
+        } else {
+            this.isCommandInputVisible = show;
+        }
+
+        if (this.isCommandInputVisible) {
+            container.style.display = 'block';
+            input.focus();
+            // 게임 일시정지? (선택사항, 여기선 플레이어 조작만 막음)
+        } else {
+            container.style.display = 'none';
+            input.blur();
+            this.canvas.focus();
+        }
+    }
+
+    // 명령어 실행
+    executeCommand(command) {
+        const cmd = command.trim();
+        console.log(`명령어 실행: ${cmd}`);
+
+        if (cmd === '2스테') {
+            console.log('2스테이지로 이동');
+            this.warpToStage(2);
+        } else if (cmd === '1스테 보스') {
+            console.log('1스테이지 보스방 근처로 이동');
+            // 1스테이지로 이동 (던전 생성됨)
+            if (this.level !== 1) {
+                this.warpToStage(1);
+            }
+
+            // 보스방 찾기
+            if (this.dungeon && this.dungeon.bossRoom !== null) {
+                // 보스방과 연결된 방 찾기 (neighbors)
+                const bossRoomData = this.dungeon.rooms.get(this.dungeon.bossRoom);
+                if (bossRoomData && bossRoomData.neighbors.length > 0) {
+                    // 첫 번째 이웃 방으로 이동
+                    const neighborId = bossRoomData.neighbors[0];
+                    this.loadRoomById(neighborId);
+                    console.log(`보스방(${this.dungeon.bossRoom}) 근처 방(${neighborId})으로 이동`);
+
+                    // 플레이어 중앙 배치
+                    if (this.player) {
+                        this.player.x = this.canvas.width / 2;
+                        this.player.y = this.canvas.height / 2;
+                    }
+                }
+            }
+        } else if (cmd === '2스테 보스') {
+            console.log('2스테이지 보스방 근처로 이동');
+            // 2스테이지로 이동 (던전 생성됨)
+            if (this.level !== 2) {
+                this.warpToStage(2);
+            }
+
+            // 보스방 찾기
+            if (this.dungeon && this.dungeon.bossRoom !== null) {
+                // 보스방과 연결된 방 찾기 (neighbors)
+                const bossRoomData = this.dungeon.rooms.get(this.dungeon.bossRoom);
+                if (bossRoomData && bossRoomData.neighbors.length > 0) {
+                    // 첫 번째 이웃 방으로 이동
+                    const neighborId = bossRoomData.neighbors[0];
+                    this.loadRoomById(neighborId);
+                    console.log(`보스방(${this.dungeon.bossRoom}) 근처 방(${neighborId})으로 이동`);
+
+                    // 플레이어 중앙 배치
+                    if (this.player) {
+                        this.player.x = this.canvas.width / 2;
+                        this.player.y = this.canvas.height / 2;
+                    }
+                }
+            }
+        } else if (cmd === '3스테') {
+            console.log('3스테이지로 이동');
+            this.warpToStage(3);
+        } else if (cmd === '3스테 보스') {
+            console.log('3스테이지 보스방 근처로 이동');
+            // 3스테이지로 이동 (던전 생성됨)
+            if (this.level !== 3) {
+                this.warpToStage(3);
+            }
+
+            // 보스방 찾기
+            if (this.dungeon && this.dungeon.bossRoom !== null) {
+                // 보스방과 연결된 방 찾기 (neighbors)
+                const bossRoomData = this.dungeon.rooms.get(this.dungeon.bossRoom);
+                if (bossRoomData && bossRoomData.neighbors.length > 0) {
+                    // 첫 번째 이웃 방으로 이동
+                    const neighborId = bossRoomData.neighbors[0];
+                    this.loadRoomById(neighborId);
+                    console.log(`보스방(${this.dungeon.bossRoom}) 근처 방(${neighborId})으로 이동`);
+
+                    // 플레이어 중앙 배치
+                    if (this.player) {
+                        this.player.x = this.canvas.width / 2;
+                        this.player.y = this.canvas.height / 2;
+                    }
+                }
+            }
+        } else if (cmd === '보스') {
+            console.log('보스 방으로 이동');
+            if (this.dungeon && this.dungeon.bossRoom !== null) {
+                this.loadRoomById(this.dungeon.bossRoom);
+                if (this.player) {
+                    this.player.x = this.canvas.width / 2;
+                    this.player.y = this.canvas.height / 2;
+                }
+            }
+        } else if (cmd === '2스테 보스방') {
+            console.log('2스테이지 보스방으로 직접 이동');
+            // 2스테이지로 이동 (던전 생성됨)
+            if (this.level !== 2) {
+                this.warpToStage(2);
+            }
+
+            // 보스방으로 바로 이동
+            if (this.dungeon && this.dungeon.bossRoom !== null) {
+                this.loadRoomById(this.dungeon.bossRoom);
+                console.log(`보스방(${this.dungeon.bossRoom})으로 직접 이동`);
+
+                // 플레이어 중앙 배치
+                if (this.player) {
+                    this.player.x = this.canvas.width / 2;
+                    this.player.y = this.canvas.height / 2;
+                }
+            }
+        } else if (cmd === 'god') {
+            // 무적 모드 토글
+            if (this.player) {
+                this.player.godMode = !this.player.godMode;
+                console.log(`무적 모드: ${this.player.godMode ? 'ON' : 'OFF'}`);
+            }
+        }
+    }
+
+    // 특정 스테이지로 워프 (플레이어 상태 유지)
+    warpToStage(targetLevel) {
+        this.level = targetLevel;
+
+        // 2스테이지 이상이면 대쉬 능력 부여
+        if (this.level >= 2 && this.player) {
+            this.player.hasDash = true;
+        }
+
+        // 스테이지 텍스트 표시
+        this.showStageText = true;
+        this.stageTextTimer = 0;
+
+        // 방 상태 초기화 (새 던전)
+        this.roomStates.clear();
+        this.portal = null;
+        this.altar = null; // 제단 초기화
+        this.projectiles = [];
+        this.enemies = [];
+        this.items = [];
+        this.particles = []; // 파티클 초기화
+        this.activeItems = [];
+        this.room = null;
+
+        // 새 던전 생성
+        const generator = new DungeonGenerator(this.level);
+        this.dungeon = generator.generate();
+        this.minimap = new Minimap(this.dungeon, this.canvas.width, this.canvas.height);
+
+        // 시작 방으로 이동
+        this.currentRoomId = this.dungeon.startRoom;
+        this.loadRoomById(this.currentRoomId);
+
+        // 플레이어 위치 초기화
+        if (this.player) {
+            this.player.x = this.canvas.width / 2;
+            this.player.y = this.canvas.height / 2;
+        }
+
+        // 카메라 초기화
+        this.camera = { x: 0, y: 0 };
     }
 
     // 두 방 사이의 방향 계산
@@ -385,7 +633,21 @@ class Game {
             if (this.level === 3) {
                 boss = this.spawnEnemy(roomWidth / 2, roomHeight / 2, 'stage3_boss');
             } else if (this.level === 2) {
-                boss = this.spawnEnemy(roomWidth / 2, roomHeight / 2, 'hive_boss');
+                // 2스테이지 보스: 벌집 수호자 + 쫄몹 2마리
+                boss = this.spawnEnemy(roomWidth / 2, roomHeight / 2 - 100, 'hive_boss');
+
+                // 쫄몹 생성 (왼쪽, 오른쪽)
+                const leftMinion = this.spawnEnemy(roomWidth / 2 - 200, roomHeight / 2 + 100, 'hive_left_minion');
+                const rightMinion = this.spawnEnemy(roomWidth / 2 + 200, roomHeight / 2 + 100, 'hive_right_minion');
+
+                // 공유 체력 설정
+                const sharedHealthPool = { current: 200, max: 200 };
+                boss.sharedHealthPool = sharedHealthPool;
+                leftMinion.sharedHealthPool = sharedHealthPool;
+                rightMinion.sharedHealthPool = sharedHealthPool;
+
+                // 보스에게 쫄몹 참조 저장
+                boss.minions = [leftMinion, rightMinion];
             } else {
                 boss = this.spawnEnemy(roomWidth / 2, roomHeight / 2, 'boss');
             }
@@ -478,6 +740,37 @@ class Game {
             }
 
             this.room.openAllDoors();
+        } else if (roomType === 'boss') {
+            // 보스방 - 문은 처음부터 열려있음
+            this.room.openAllDoors();
+
+            // 레벨에 따라 보스 생성
+            const centerX = roomWidth / 2;
+            const centerY = roomHeight / 2;
+
+            if (this.level === 1) {
+                // 1스테이지 보스
+                this.spawnEnemy(centerX, centerY, 'boss');
+            } else if (this.level === 2) {
+                // 2스테이지 보스: 벌집 수호자 + 쫄몹 2마리
+                const boss = this.spawnEnemy(centerX, centerY - 100, 'hive_boss');
+
+                // 쫄몹 생성 (왼쪽, 오른쪽)
+                const leftMinion = this.spawnEnemy(centerX - 200, centerY + 100, 'hive_left_minion');
+                const rightMinion = this.spawnEnemy(centerX + 200, centerY + 100, 'hive_right_minion');
+
+                // 공유 체력 설정
+                const sharedHealthPool = { current: 200, max: 200 };
+                boss.sharedHealthPool = sharedHealthPool;
+                leftMinion.sharedHealthPool = sharedHealthPool;
+                rightMinion.sharedHealthPool = sharedHealthPool;
+
+                // 보스에게 쫄몹 참조 저장
+                boss.minions = [leftMinion, rightMinion];
+            } else if (this.level === 3) {
+                // 3스테이지 보스
+                this.spawnEnemy(centerX, centerY, 'stage3_boss');
+            }
         } else if (roomType === 'altar') {
             // 제단 방
             this.altar = new Altar(this.canvas.width / 2, this.canvas.height / 2);
@@ -600,6 +893,7 @@ class Game {
 
         enemy.setTarget(this.player);
         this.enemies.push(enemy);
+        return enemy; // 생성한 적 반환
     }
 
     // 아이템 생성 헬퍼 함수
@@ -631,6 +925,18 @@ class Game {
         // 플레이어 체력 회복 (보너스)
         if (this.player) {
             this.player.health = Math.min(this.player.health + 1, this.player.maxHealth);
+
+            // 2스테이지 진입 시 대쉬 능력 획득
+            if (this.level === 2 && !this.player.hasDash) {
+                this.player.hasDash = true;
+
+                // 대쉬 능력 획득 튜토리얼 표시
+                this.pickedItemName = '대쉬 능력을 획득!';
+                this.pickedItemDescription = 'Shift를 누르면 발동 할 수 있다';
+                this.pickedItemImage = null;
+                this.showItemPickup = true;
+                this.itemPickupTimer = 0;
+            }
         }
 
         // 스테이지 텍스트 표시
@@ -703,7 +1009,93 @@ class Game {
         }
     }
 
+    // 2스테이지 보스 로직 (변신 및 체력 공유)
+    updateStage2Boss(deltaTime) {
+        if (this.level !== 2) return;
+
+        const boss = this.enemies.find(e => e.type === 'hive_boss');
+        if (!boss || !boss.active) return;
+
+        // 체력 동기화 (모든 공유 엔티티)
+        if (boss.sharedHealthPool) {
+            this.enemies.forEach(e => {
+                if (e.sharedHealthPool === boss.sharedHealthPool) {
+                    e.health = boss.sharedHealthPool.current;
+                }
+            });
+        }
+
+        const healthPercent = boss.sharedHealthPool.current / boss.sharedHealthPool.max;
+
+        // 변신 트리거 (60%)
+        if (healthPercent <= 0.6 && boss.transformationPhase === 0) {
+            console.log('2스테이지 보스 변신 시작 (60%)');
+            boss.transformationPhase = 1; // 변신 중
+            boss.isTransforming = true;
+            boss.transformTimer = 0;
+
+            // 플레이어 얼리기
+            this.playerFrozen = true;
+
+            // 쫄몹 변신 이미지 설정 (8번, 9번)
+            boss.minions.forEach(minion => {
+                if (minion.transformImage) {
+                    minion.imageIdle.src = minion.transformImage;
+                }
+            });
+        }
+
+        // 변신 진행 중
+        if (boss.isTransforming) {
+            boss.transformTimer += deltaTime;
+
+            // 보스 및 쫄몹 공격 중지 (AI 상태 변경)
+            // 실제 AI 로직에서 isTransforming 체크 필요
+
+            // 변신 완료 (3초 후)
+            if (boss.transformTimer >= boss.transformDuration) {
+                console.log('2스테이지 보스 변신 완료');
+                boss.isTransforming = false;
+                this.playerFrozen = false;
+
+                // 최종 이미지 및 위치 설정
+                // 3번(보스): 위쪽
+                boss.x = this.canvas.width / 2;
+                boss.y = 150;
+
+                boss.minions.forEach(minion => {
+                    if (minion.finalImage) {
+                        minion.imageIdle.src = minion.finalImage;
+                    }
+
+                    // 위치 재배치
+                    if (minion.type === 'hive_left_minion') {
+                        minion.x = 150;
+                        minion.y = this.canvas.height / 2;
+                    } else if (minion.type === 'hive_right_minion') {
+                        minion.x = this.canvas.width - 150;
+                        minion.y = this.canvas.height / 2;
+                    }
+                });
+            }
+        }
+
+        // 추가 소환 트리거 (40%)
+        if (healthPercent <= 0.4 && boss.transformationPhase === 1 && !boss.isTransforming) {
+            console.log('2스테이지 보스 추가 소환 (40%)');
+            boss.transformationPhase = 2;
+
+            // 10번 쫄몹 소환 (중앙 아래)
+            const finalMinion = this.spawnEnemy(this.canvas.width / 2, this.canvas.height / 2 + 150, 'hive_final_minion');
+            finalMinion.sharedHealthPool = boss.sharedHealthPool;
+            boss.minions.push(finalMinion);
+        }
+    }
+
     update(deltaTime, currentTime) {
+        // 2스테이지 보스 업데이트
+        this.updateStage2Boss(deltaTime);
+
         // 스테이지 텍스트 타이머 업데이트
         if (this.showStageText) {
             this.stageTextTimer += deltaTime;
@@ -735,8 +1127,8 @@ class Game {
             return; // 전환 중에는 다른 업데이트 안 함
         }
 
-        // 플레이어 업데이트
-        if (this.player) {
+        // 플레이어 업데이트 (얼어있지 않을 때만)
+        if (this.player && !this.playerFrozen) {
             // 방 크기를 전달하여 플레이어가 방 전체를 이동할 수 있게 함
             const roomWidth = this.room ? this.room.canvasWidth : this.canvas.width;
             const roomHeight = this.room ? this.room.canvasHeight : this.canvas.height;
@@ -939,7 +1331,8 @@ class Game {
         // 사용 아이템 업데이트 (베기)
         for (let i = this.activeItems.length - 1; i >= 0; i--) {
             if (this.player) {
-                this.activeItems[i].update(deltaTime, this.player.x, this.player.y);
+                // GifSlash 등을 위해 카메라 위치도 전달
+                this.activeItems[i].update(deltaTime, this.player.x, this.player.y, this.camera.x, this.camera.y);
             }
 
             if (!this.activeItems[i].active) {
@@ -952,18 +1345,23 @@ class Game {
             this.room.updateObstacles(deltaTime);
         }
 
-        // 보스 BGM 제어 (1스테이지 보스)
-        const isBossRoom = this.dungeon && this.currentRoomId === this.dungeon.bossRoom && this.level === 1;
-        const hasBossEnemy = this.enemies.some(e => e.type === 'boss');
+        // 보스 BGM 제어 (모든 스테이지)
+        const isBossRoom = this.dungeon && this.currentRoomId === this.dungeon.bossRoom;
+        const hasBossEnemy = this.enemies.some(e => e.type === 'boss' || e.type === 'hive_boss' || e.type === 'stage3_boss');
 
         if (isBossRoom && hasBossEnemy && !this.isBossBGMPlaying) {
+            // 현재 스테이지에 맞는 보스 BGM 선택
+            this.bossBGM = this.bossBGMs[this.level] || this.bossBGMs[1];
+
             // 보스 BGM 재생
             this.bossBGM.currentTime = 0;
             this.bossBGM.play().catch(err => console.log('BGM 재생 실패:', err));
             this.isBossBGMPlaying = true;
         } else if ((!isBossRoom || !hasBossEnemy) && this.isBossBGMPlaying) {
             // 보스 BGM 정지
-            this.bossBGM.pause();
+            if (this.bossBGM) {
+                this.bossBGM.pause();
+            }
             this.isBossBGMPlaying = false;
         }
 
@@ -1116,8 +1514,8 @@ class Game {
             }
         }
 
-        // 적을 모두 처치하면 문 열기
-        if (this.room && this.room.hasEnemies && this.enemies.length === 0) {
+        // 적을 모두 처치하면 문 열기 (hasEnemies 조건 제거 - 클리어한 방도 문 열림)
+        if (this.room && this.enemies.length === 0) {
             this.room.openAllDoors();
 
             // 던전 시스템: 방을 cleared로 표시
@@ -1165,36 +1563,9 @@ class Game {
             if (!this.activeItems[i].active) {
                 // GifSlash의 경우 DOM 요소 제거는 내부에서 처리됨
                 this.activeItems.splice(i, 1);
-            } else {
-                // 충돌 체크
-                for (const enemy of this.enemies) {
-                    if (this.activeItems[i].checkCollision(enemy)) {
-                        // GifSlash의 경우 페이즈 기반 데미지
-                        const currentDamage = this.activeItems[i].getDamage ? this.activeItems[i].getDamage() : this.activeItems[i].damage;
-
-                        if (currentDamage > 0) {
-                            enemy.takeDamage(currentDamage);
-
-                            // GifSlash의 경우 현재 페이즈를 hasHit로 표시
-                            if (this.activeItems[i].getCurrentPhase) {
-                                const phase = this.activeItems[i].getCurrentPhase();
-                                if (phase) {
-                                    phase.hasHit = true;
-                                }
-                            } else {
-                                // Slash의 경우 기존 방식
-                                if (!this.activeItems[i].hitEnemies.includes(enemy)) {
-                                    this.activeItems[i].hitEnemies.push(enemy);
-                                }
-                            }
-
-                            // 타격 이펙트
-                            this.spawnParticles(enemy.x, enemy.y, '#ff0000', 5);
-                        }
-                    }
-                }
             }
         }
+
 
         // 충돌 감지
         this.checkCollisions();
@@ -1239,11 +1610,6 @@ class Game {
                         }
                     }
 
-                    // 소다맛 꼬미볼 효과 (적 속도 증가)
-                    if (this.player.hasSodaKomibol && enemy.active && enemy.type !== 'boss') {
-                        enemy.speedBoostTimer = 0.8; // 0.8초 동안 속도 증가
-                    }
-
                     projectile.active = false;
                 }
             } else {
@@ -1256,7 +1622,9 @@ class Game {
 
                     if (checkCollision(projBounds, enemyBounds)) {
                         // 적이 데미지를 받음
-                        enemy.takeDamage(projectile.damage);
+                        if (enemy.takeDamage(projectile.damage)) {
+                            enemy.active = false;
+                        }
 
                         // 오팔 총 효과 (타격 이펙트)
                         if (projectile.isOpal) {
@@ -1274,7 +1642,8 @@ class Game {
 
         // 사용 아이템(베기) vs 적 충돌
         for (const item of this.activeItems) {
-            if (item instanceof Slash && item.active) {
+            // Slash 또는 GifSlash (Murasama) 체크
+            if ((item instanceof Slash || (typeof GifSlash !== 'undefined' && item instanceof GifSlash)) && item.active) {
                 for (let j = this.enemies.length - 1; j >= 0; j--) {
                     const enemy = this.enemies[j];
                     if (enemy.isSpawning) continue; // 소환 중인 적은 무시
@@ -1292,29 +1661,36 @@ class Game {
                     if (item.hitEnemies.includes(enemy)) continue;
 
                     if (item.checkCollision(enemy)) {
+                        // 데미지 계산 (아이템마다 다를 수 있음)
+                        let damage = item.damage;
+                        if (typeof item.getDamage === 'function') {
+                            damage = item.getDamage();
+                        }
+
                         // 적이 데미지를 받음
-                        if (enemy.takeDamage(item.damage)) {
+                        if (enemy.takeDamage(damage)) {
+                            enemy.active = false;
                             // 처치 시
                             this.score += 10;
                             this.updateScore();
                         }
                         item.hitEnemies.push(enemy);
+                    }
 
-                        // 소다맛 꼬미볼 효과 (적 속도 증가)
-                        if (this.player.hasSodaKomibol && enemy.active && enemy.type !== 'boss') {
-                            enemy.speedBoostTimer = 0.8; // 0.8초 동안 속도 증가
-                        }
+                    // 소다맛 꼬미볼 효과 (적 속도 증가)
+                    if (this.player.hasSodaKomibol && enemy.active && enemy.type !== 'boss') {
+                        enemy.speedBoostTimer = 0.8; // 0.8초 동안 속도 증가
+                    }
 
-                        // 넉백 효과 (보스 제외)
-                        if (enemy.type !== 'boss') {
-                            const dx = enemy.x - this.player.x;
-                            const dy = enemy.y - this.player.y;
-                            const distance = Math.sqrt(dx * dx + dy * dy);
-                            if (distance > 0) {
-                                const knockbackForce = 30; // 넉백 감소 (100 -> 30)
-                                enemy.x += (dx / distance) * knockbackForce;
-                                enemy.y += (dy / distance) * knockbackForce;
-                            }
+                    // 넉백 효과 (보스 제외, Slash만 적용, GifSlash는 넉백 없음)
+                    if (item instanceof Slash && enemy.type !== 'boss') {
+                        const dx = enemy.x - this.player.x;
+                        const dy = enemy.y - this.player.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        if (distance > 0) {
+                            const knockbackForce = 30; // 넉백 감소 (100 -> 30)
+                            enemy.x += (dx / distance) * knockbackForce;
+                            enemy.y += (dy / distance) * knockbackForce;
                         }
                     }
                 }
@@ -1424,6 +1800,14 @@ class Game {
                 this.stars.splice(i, 1);
             }
         }
+
+        // 플레이어 vs 포탈 충돌 (다음 스테이지로 이동)
+        if (this.portal && this.portal.active) {
+            const portalBounds = this.portal.getBounds();
+            if (checkCollision(playerBounds, portalBounds)) {
+                this.nextStage();
+            }
+        }
     }
 
     // 별의 소리 생성
@@ -1505,24 +1889,11 @@ class Game {
             // GifSlash: update(deltaTime, playerX, playerY, cameraX, cameraY)
             this.activeItems[i].update(deltaTime, this.player.x, this.player.y, this.camera.x, this.camera.y);
 
+
             // 비활성 아이템 제거
             if (!this.activeItems[i].active) {
                 // GifSlash의 경우 DOM 요소 제거는 내부에서 처리됨 (active=false 될 때)
                 this.activeItems.splice(i, 1);
-            } else {
-                // 충돌 체크
-                for (const enemy of this.enemies) {
-                    if (this.activeItems[i].checkCollision(enemy)) {
-                        // 이미 타격한 적은 제외 (Slash 클래스에 hitEnemies 있음, GifSlash에도 추가 필요)
-                        if (!this.activeItems[i].hitEnemies.includes(enemy)) {
-                            enemy.takeDamage(this.activeItems[i].damage);
-                            this.activeItems[i].hitEnemies.push(enemy);
-
-                            // 타격 이펙트?
-                            this.spawnParticles(enemy.x, enemy.y, '#ff0000', 5);
-                        }
-                    }
-                }
             }
         }
 
@@ -1684,58 +2055,60 @@ class Game {
         const angkoX = this.canvas.width / 2 - 180;
         const angkoY = 250;
         const buttonWidth = 150;
-        const buttonHeight = 200;
+        const buttonHeight = 150;
+
+        // 마우스 오버 체크 (앙코)
+        const isAngkoHover = this.mouseX >= angkoX && this.mouseX <= angkoX + buttonWidth &&
+            this.mouseY >= angkoY && this.mouseY <= angkoY + buttonHeight;
 
         // 앙코 버튼 배경
-        this.ctx.fillStyle = '#ff6b9d';
-        this.ctx.fillRect(angkoX, angkoY, buttonWidth, buttonHeight);
+        this.ctx.fillStyle = isAngkoHover ? '#ff8bb5' : '#ff6b9d'; // 호버 시 밝게
+        if (isAngkoHover) {
+            this.ctx.fillRect(angkoX - 5, angkoY - 5, buttonWidth + 10, buttonHeight + 10); // 호버 시 확대
+        } else {
+            this.ctx.fillRect(angkoX, angkoY, buttonWidth, buttonHeight);
+        }
+
         this.ctx.strokeStyle = '#ffffff';
         this.ctx.lineWidth = 3;
         this.ctx.strokeRect(angkoX, angkoY, buttonWidth, buttonHeight);
 
         // 앙코 텍스트
         this.ctx.fillStyle = '#ffffff';
-        this.ctx.font = 'bold 28px Arial';
-        this.ctx.fillText('앙코 모드', angkoX + buttonWidth / 2, angkoY + 40);
-
-        this.ctx.font = '16px Arial';
-        this.ctx.fillText('(쉬움)', angkoX + buttonWidth / 2, angkoY + 70);
-
-        this.ctx.font = '14px Arial';
-        this.ctx.fillText('1스테이지', angkoX + buttonWidth / 2, angkoY + 110);
-        this.ctx.fillText('시작 시', angkoX + buttonWidth / 2, angkoY + 130);
-        this.ctx.fillText('무라사마', angkoX + buttonWidth / 2, angkoY + 150);
-        this.ctx.fillText('제공', angkoX + buttonWidth / 2, angkoY + 170);
+        this.ctx.font = 'bold 32px Arial';
+        this.ctx.fillText('앙코 모드', angkoX + buttonWidth / 2, angkoY + buttonHeight / 2 + 10);
 
         // 임딱 모드 버튼
         const imdakX = this.canvas.width / 2 + 30;
         const imdakY = 250;
 
+        // 마우스 오버 체크 (임딱)
+        const isImdakHover = this.mouseX >= imdakX && this.mouseX <= imdakX + buttonWidth &&
+            this.mouseY >= imdakY && this.mouseY <= imdakY + buttonHeight;
+
         // 임딱 버튼 배경
-        this.ctx.fillStyle = '#c44569';
-        this.ctx.fillRect(imdakX, imdakY, buttonWidth, buttonHeight);
+        this.ctx.fillStyle = isImdakHover ? '#e6678b' : '#c44569'; // 호버 시 밝게
+        if (isImdakHover) {
+            this.ctx.fillRect(imdakX - 5, imdakY - 5, buttonWidth + 10, buttonHeight + 10); // 호버 시 확대
+        } else {
+            this.ctx.fillRect(imdakX, imdakY, buttonWidth, buttonHeight);
+        }
+
         this.ctx.strokeStyle = '#ffffff';
         this.ctx.lineWidth = 3;
         this.ctx.strokeRect(imdakX, imdakY, buttonWidth, buttonHeight);
 
         // 임딱 텍스트
         this.ctx.fillStyle = '#ffffff';
-        this.ctx.font = 'bold 28px Arial';
-        this.ctx.fillText('임딱 모드', imdakX + buttonWidth / 2, imdakY + 40);
+        this.ctx.font = 'bold 32px Arial';
+        this.ctx.fillText('임딱 모드', imdakX + buttonWidth / 2, imdakY + buttonHeight / 2 + 10);
 
-        this.ctx.font = '16px Arial';
-        this.ctx.fillText('(어려움)', imdakX + buttonWidth / 2, imdakY + 70);
-
-        this.ctx.font = '14px Arial';
-        this.ctx.fillText('2스테이지', imdakX + buttonWidth / 2, imdakY + 110);
-        this.ctx.fillText('부터', imdakX + buttonWidth / 2, imdakY + 130);
-        this.ctx.fillText('상점/보물방', imdakX + buttonWidth / 2, imdakY + 150);
-        this.ctx.fillText('에서만 획득', imdakX + buttonWidth / 2, imdakY + 170);
-
-        // 안내 텍스트
-        this.ctx.fillStyle = '#aaaaaa';
-        this.ctx.font = '18px Arial';
-        this.ctx.fillText('모드를 선택하세요', this.canvas.width / 2, 500);
+        // 커서 변경
+        if (isAngkoHover || isImdakHover) {
+            this.canvas.style.cursor = 'pointer';
+        } else {
+            this.canvas.style.cursor = 'default';
+        }
     }
 
     // 모드 선택 처리
@@ -1745,14 +2118,15 @@ class Game {
         const imdakX = this.canvas.width / 2 + 30;
         const imdakY = 250;
         const buttonWidth = 150;
-        const buttonHeight = 200;
+        const buttonHeight = 150;
 
         // 앙코 모드 클릭
         if (clickX >= angkoX && clickX <= angkoX + buttonWidth &&
             clickY >= angkoY && clickY <= angkoY + buttonHeight) {
             this.gameMode = 'angko';
             this.showModeSelection = false;
-            this.startGame();
+            this.showControlsScreen = true;
+            this.drawControlsScreen();
         }
 
         // 임딱 모드 클릭
@@ -1760,8 +2134,43 @@ class Game {
             clickY >= imdakY && clickY <= imdakY + buttonHeight) {
             this.gameMode = 'imdak';
             this.showModeSelection = false;
-            this.startGame();
+            this.showControlsScreen = true;
+            this.drawControlsScreen();
         }
+    }
+
+    // 조작법 설명 화면 그리기
+    drawControlsScreen() {
+        // 배경
+        this.ctx.fillStyle = '#1a1a2e';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // 제목
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.font = 'bold 48px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('조작법', this.canvas.width / 2, 120);
+
+        // 설명
+        this.ctx.font = '24px Arial';
+        this.ctx.textAlign = 'left';
+        const startX = this.canvas.width / 2 - 150;
+        const startY = 200;
+        const lineHeight = 50;
+
+        this.ctx.fillText('WASD : 이동', startX, startY);
+        this.ctx.fillText('방향키 : 공격', startX, startY + lineHeight);
+        this.ctx.fillText('Space : 상호작용', startX, startY + lineHeight * 2);
+        this.ctx.fillText('Tab : 아이템 슬롯 전환', startX, startY + lineHeight * 3);
+        this.ctx.fillText('Shift : 대쉬 (2스테이지+)', startX, startY + lineHeight * 4);
+
+        // 시작 안내
+        this.ctx.font = '20px Arial';
+        this.ctx.fillStyle = '#aaaaaa';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('아무 키나 누르면 시작합니다', this.canvas.width / 2, this.canvas.height - 80);
+
+        this.ctx.textAlign = 'left';
     }
 
     gameOver() {
