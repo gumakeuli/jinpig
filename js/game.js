@@ -1377,6 +1377,27 @@ class Game {
         for (let i = this.enemies.length - 1; i >= 0; i--) {
             this.enemies[i].update(deltaTime, this);
 
+            // 2스테이지 보스: 40% HP에서 추가 쫄몹 소환
+            const enemy = this.enemies[i];
+            if (enemy.type === 'hive_boss' && enemy.sharedHealthPool) {
+                const healthPercent = enemy.sharedHealthPool.current / enemy.sharedHealthPool.max;
+
+                // 40% HP 도달 시 추가 쫄몹 소환 (한 번만)
+                if (healthPercent <= 0.4 && !enemy.hasSpawnedFinalMinion) {
+                    enemy.hasSpawnedFinalMinion = true;
+
+                    // 추가 쫄몹 소환 (중앙 아래)
+                    const roomWidth = this.room.canvasWidth;
+                    const roomHeight = this.room.canvasHeight;
+                    const finalMinion = this.spawnEnemy(roomWidth / 2, roomHeight / 2 + 150, 'hive_final_minion');
+
+                    // 공유 체력 연결
+                    finalMinion.sharedHealthPool = enemy.sharedHealthPool;
+
+                    console.log('2스테이지 보스 40% HP! 추가 쫄몹 소환!');
+                }
+            }
+
             // 방 경계 제약
             if (this.room) {
                 this.room.constrainEntity(this.enemies[i]);

@@ -98,7 +98,7 @@ class Enemy {
                 this.width = 200;
                 this.height = 150;
                 this.starDropTable = [{ count: 30, chance: 1.0 }];
-                this.imageIdle.src = 'assets/images/boss/3.webp';
+                this.imageIdle.src = 'assets/images/boss/3.gif?v=' + Date.now();
                 this.aiState = 'idle';
                 this.aiTimer = 0;
 
@@ -111,6 +111,15 @@ class Enemy {
                 this.isTransforming = false;
                 this.transformTimer = 0;
                 this.transformDuration = 3.0; // 3초 변신
+
+                // currentImage 재설정 (중요!)
+                this.currentImage = this.imageIdle;
+
+                // 이미지 로드 콜백 재정의
+                this.imageIdle.onload = () => {
+                    this.imageLoaded = true;
+                    this.currentImage = this.imageIdle;
+                };
                 break;
             case 'hive_left_minion':
                 // 왼쪽 쫄몹 (4번 → 8번 → 7번)
@@ -121,11 +130,20 @@ class Enemy {
                 this.width = 100; // 큰 크기
                 this.height = 100;
                 this.starDropTable = [{ count: 0, chance: 0 }];
-                this.imageIdle.src = 'assets/images/4.png';
-                this.transformImage = 'assets/images/8.png'; // 변신 중
-                this.finalImage = 'assets/images/7.png'; // 변신 완료
+                this.imageIdle.src = 'assets/images/boss/4.gif?v=' + Date.now();
+                this.transformImage = 'assets/images/boss/8.gif?v=' + Date.now(); // 변신 중
+                this.finalImage = 'assets/images/boss/7.gif?v=' + Date.now(); // 변신 완료
                 this.isTransformed = false;
                 this.sharedHealthPool = null;
+
+                // currentImage 재설정 (중요!)
+                this.currentImage = this.imageIdle;
+
+                // 이미지 로드 콜백 재정의
+                this.imageIdle.onload = () => {
+                    this.imageLoaded = true;
+                    this.currentImage = this.imageIdle;
+                };
                 break;
             case 'hive_right_minion':
                 // 오른쪽 쫄몹 (5번 → 9번 → 6번)
@@ -136,11 +154,20 @@ class Enemy {
                 this.width = 100; // 큰 크기
                 this.height = 100;
                 this.starDropTable = [{ count: 0, chance: 0 }];
-                this.imageIdle.src = 'assets/images/5.png';
-                this.transformImage = 'assets/images/9.png'; // 변신 중
-                this.finalImage = 'assets/images/6.png'; // 변신 완료
+                this.imageIdle.src = 'assets/images/boss/5.gif?v=' + Date.now();
+                this.transformImage = 'assets/images/boss/9.gif?v=' + Date.now(); // 변신 중
+                this.finalImage = 'assets/images/boss/6.gif?v=' + Date.now(); // 변신 완료
                 this.isTransformed = false;
                 this.sharedHealthPool = null;
+
+                // currentImage 재설정 (중요!)
+                this.currentImage = this.imageIdle;
+
+                // 이미지 로드 콜백 재정의
+                this.imageIdle.onload = () => {
+                    this.imageLoaded = true;
+                    this.currentImage = this.imageIdle;
+                };
                 break;
             case 'hive_final_minion':
                 // 40% HP에서 등장하는 쫄몹 (10번)
@@ -151,8 +178,17 @@ class Enemy {
                 this.width = 120;
                 this.height = 120;
                 this.starDropTable = [{ count: 0, chance: 0 }];
-                this.imageIdle.src = 'assets/images/10.png';
+                this.imageIdle.src = 'assets/images/boss/10.gif?v=' + Date.now();
                 this.sharedHealthPool = null;
+
+                // currentImage 재설정 (중요!)
+                this.currentImage = this.imageIdle;
+
+                // 이미지 로드 콜백 재정의
+                this.imageIdle.onload = () => {
+                    this.imageLoaded = true;
+                    this.currentImage = this.imageIdle;
+                };
                 break;
             case 'stage3_boss':
                 this.speed = 80; // 중간 속도
