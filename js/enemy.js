@@ -38,8 +38,8 @@ class Enemy {
                 this.color = '#ff0000';
                 // 별의 소리 드랍 (0개: 60%, 1개: 40%)
                 this.starDropTable = [
-                    { count: 0, chance: 0.6 },
-                    { count: 1, chance: 0.4 }
+                    { count: 0, chance: 0.8 },
+                    { count: 1, chance: 0.2 }
                 ];
                 break;
             case 'fast':
@@ -49,8 +49,8 @@ class Enemy {
                 this.color = '#ff6600';
                 // 별의 소리 드랍 (나중에 설정 가능)
                 this.starDropTable = [
-                    { count: 0, chance: 0.6 },
-                    { count: 1, chance: 0.4 }
+                    { count: 0, chance: 0.8 },
+                    { count: 1, chance: 0.2 }
                 ];
                 break;
             case 'tank':
@@ -60,8 +60,8 @@ class Enemy {
                 this.color = '#cc0000';
                 // 별의 소리 드랍 (나중에 설정 가능)
                 this.starDropTable = [
-                    { count: 0, chance: 0.6 },
-                    { count: 1, chance: 0.4 }
+                    { count: 0, chance: 0.8 },
+                    { count: 1, chance: 0.2 }
                 ];
                 break;
             case 'boss':
@@ -90,27 +90,43 @@ class Enemy {
                 this.imageIdle.src = 'assets/images/boss/2.jpg';
                 break;
             case 'hive_boss':
-                this.speed = 0; // 고정형
-                this.maxHealth = 200; // 높은 체력 (저지전)
-                this.damage = 0; // 직접 공격 안함
-                this.color = '#4B0082'; // 인디고
-                this.bossName = '벌집 수호자'; // 보스 이름
-                this.width = 200;
-                this.height = 150;
+                // 2스테이지 보스: 심연의 추적자
+                this.speed = 80;
+                this.maxHealth = 250; // 체력 하향 (400 -> 250)
+                this.damage = 1;
+                this.color = '#330066';
+                this.bossName = '심연의 추적자';
+                this.width = 160;
+                this.height = 160;
                 this.starDropTable = [{ count: 30, chance: 1.0 }];
-                this.imageIdle.src = 'assets/images/boss/3.gif?v=' + Date.now();
+                this.imageIdle.src = 'assets/images/boss/stage2_void.png?v=' + Date.now();
+
+                // AI 상태 초기화
                 this.aiState = 'idle';
                 this.aiTimer = 0;
+                this.patternTimer = 0;
 
-                // 공유 체력 시스템
-                this.minions = []; // 쫄몹 참조
-                this.sharedHealthPool = null; // 공유 체력 객체 (game에서 설정)
+                // 패턴 상수
+                this.PATTERN_INTERVAL = 3.0; // 패턴 간격
+                this.TELEPORT_CHARGE_TIME = 1.0;
+                this.DASH_CHARGE_TIME = 1.0;
+                this.DASH_DURATION = 0.5;
+                this.DASH_SPEED = 600;
 
-                // 변신 시스템
-                this.transformationPhase = 0; // 0: 기본, 1: 60% 변신 완료, 2: 40% 추가 소환
-                this.isTransforming = false;
-                this.transformTimer = 0;
-                this.transformDuration = 3.0; // 3초 변신
+                // 공허 강습 상수
+                this.SMASH_JUMP_TIME = 0.5; // 도약 시간
+                this.SMASH_AIR_TIME = 2.5; // 공중 체공 시간 (조준) - 난이도 완화 (1.5 -> 2.5)
+                this.SMASH_FALL_TIME = 0.3; // 낙하 시간 (참고용, 실제 속도로 제어)
+                this.SMASH_DAMAGE = 1; // 강습 데미지 (2 -> 1)
+
+                this.lastPattern = null; // 마지막 패턴 기억 (연속 방지)
+
+                // 갈라진 땅 이미지 로드
+                this.imageCracked = new Image();
+                this.imageCracked.src = 'assets/images/boss/cracked_ground.png?v=' + Date.now();
+                this.crackedGrounds = []; // 갈라진 땅 효과 목록 {x, y, timer, duration}
+
+
 
                 // currentImage 재설정 (중요!)
                 this.currentImage = this.imageIdle;
@@ -192,7 +208,7 @@ class Enemy {
                 break;
             case 'stage3_boss':
                 this.speed = 80; // 중간 속도
-                this.maxHealth = 300; // 매우 높은 체력
+                this.maxHealth = 200; // 체력 하향 (300 -> 200)
                 this.damage = 3; // 강한 데미지
                 this.color = '#FF0000'; // 빨간색
                 this.bossName = '최종 보스'; // 보스 이름
@@ -463,6 +479,10 @@ class Enemy {
 
         // 이미지가 로드되었으면 이미지로, 아니면 사각형으로
         if (this.imageLoaded) {
+            ctx.save();
+            if (typeof this.opacity !== 'undefined') {
+                ctx.globalAlpha = this.opacity;
+            }
             ctx.drawImage(
                 this.currentImage,
                 this.x - this.width / 2,
@@ -470,6 +490,7 @@ class Enemy {
                 this.width,
                 this.height
             );
+            ctx.restore();
         } else {
             // 로딩 중에는 빨간 사각형
             ctx.fillStyle = this.color;
@@ -479,6 +500,101 @@ class Enemy {
                 this.width,
                 this.height
             );
+        }
+        // 보스 전조 효과 그리기
+        if (this.type === 'hive_boss') {
+            // 공허 강습 그림자 (체공 중일 때) - 보스보다 뒤에 그려야 함? 아니면 앞에? 
+            // 그림자는 보통 바닥에 있으니 뒤에 그리는 게 맞음. 하지만 보스가 공중에 있을 땐 보스가 없으니 상관 없음.
+            // 보스 아이들 이미지가 그려질 때(낙하 후) 갈라진 땅이 보스보다 뒤에 있어야 함.
+
+            // 1. 갈라진 땅 그리기 (가장 먼저)
+            if (this.crackedGrounds) {
+                for (const ground of this.crackedGrounds) {
+                    if (this.imageCracked && this.imageCracked.complete) {
+                        const size = 300 * ground.scale;
+                        ctx.save();
+                        ctx.globalAlpha = Math.min(1.0, ground.timer); // 사라질 때 페이드아웃
+                        ctx.drawImage(
+                            this.imageCracked,
+                            ground.x - size / 2,
+                            ground.y - size / 2,
+                            size,
+                            size
+                        );
+                        ctx.restore();
+                    }
+                }
+            }
+
+            // 공허 강습 그림자 (체공 중일 때)
+            if (this.aiState === 'smash_airborne' || this.aiState === 'smash_jump' || this.aiState === 'smash_fall') {
+                if (this.smashTargetX != null) {
+                    ctx.save();
+                    ctx.globalAlpha = 0.5;
+                    ctx.fillStyle = '#000000';
+                    const shadowSize = 100 + Math.sin(Date.now() / 100) * 10; // 펄스 효과
+
+                    // 타겟 위치에 그림자
+                    let sx = this.smashTargetX;
+                    let sy = this.smashTargetY;
+
+                    // 점프 중에는 플레이어 따라다님 (airborne)
+                    if (this.aiState === 'smash_airborne') {
+                        // update에서 이미 업데이트 중
+                    }
+
+                    ctx.beginPath();
+                    ctx.ellipse(sx, sy, shadowSize, shadowSize * 0.5, 0, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // 위험 표시 (붉은 원)
+                    ctx.strokeStyle = '#ff0000';
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([5, 5]);
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, 150, 0, Math.PI * 2); // 데미지 범위
+                    ctx.stroke();
+
+                    ctx.restore();
+                }
+            }
+
+            if (this.aiState === 'teleport_charge' && this.teleportTargetX != null) {
+                // 텔레포트 목표 위치 표시 (반투명 원)
+                ctx.save();
+                ctx.globalAlpha = 0.5;
+                ctx.fillStyle = '#9900cc'; // 보라색
+                ctx.beginPath();
+                ctx.arc(this.teleportTargetX, this.teleportTargetY, 50, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 마법진 느낌의 테두리
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+                ctx.arc(this.teleportTargetX, this.teleportTargetY, 50, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.restore();
+            } else if (this.aiState === 'dash_charge') {
+                // 돌진 경로 표시 (붉은색 라인)
+                ctx.save();
+                ctx.globalAlpha = 0.5;
+                ctx.strokeStyle = '#ff0000';
+                ctx.lineWidth = 40; // 돌진 폭
+
+                // 보스 중심에서 돌진 방향으로 길게
+                const endX = this.x + this.dashDirX * 1000;
+                const endY = this.y + this.dashDirY * 1000;
+
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.y); // 보스 중심에서 시작인 것 같음 (위에서 width/2를 더했었는데, x,y가 중심좌표라면?)
+                // Enemy 생성자 보면 this.x, this.y가 위치임. drawImage는 this.x - this.width/2 하는 걸로 보아 x,y가 중심 맞음.
+                ctx.lineTo(endX, endY);
+                ctx.stroke();
+                ctx.restore();
+            }
+
         }
 
         // 체력바
@@ -696,39 +812,241 @@ class Enemy {
     }
 
     // Hive Boss AI (웨이브 소환 시스템)
+    // 심연의 추적자 AI (텔레포트 & 돌진)
     updateHiveBossAI(deltaTime, game) {
-        this.aiTimer += deltaTime;
+        if (!this.target) return;
 
-        // 웨이브 소환
-        if (this.aiState === 'spawning') {
-            if (this.aiTimer >= this.waveInterval) {
-                this.aiTimer = 0;
-                this.waveNumber++;
-
-                // 최대 웨이브 도달 시 종료
-                if (this.waveNumber > this.maxWaves) {
-                    this.aiState = 'idle';
-                    return;
+        // 갈라진 땅 효과 업데이트
+        if (this.crackedGrounds) {
+            for (let i = this.crackedGrounds.length - 1; i >= 0; i--) {
+                this.crackedGrounds[i].timer -= deltaTime;
+                if (this.crackedGrounds[i].timer <= 0) {
+                    this.crackedGrounds.splice(i, 1);
                 }
-
-                // 현재 웨이브 잡몹 소환
-                this.currentWaveMinions = 0;
-                const minionsToSpawn = this.minionsPerWave + Math.floor(this.waveNumber / 3); // 웨이브마다 증가
-
-                for (let i = 0; i < minionsToSpawn; i++) {
-                    // 보스 주변 랜덤 위치에 소환
-                    const angle = (Math.PI * 2 / minionsToSpawn) * i + Math.random() * 0.5;
-                    const spawnDist = 120 + Math.random() * 50;
-                    const sx = this.x + Math.cos(angle) * spawnDist;
-                    const sy = this.y + Math.sin(angle) * spawnDist;
-
-                    game.spawnEnemy(sx, sy, 'hive_minion');
-                    this.currentWaveMinions++;
-                }
-
-                console.log(`웨이브 ${this.waveNumber}/${this.maxWaves}: ${minionsToSpawn}마리 소환`);
             }
         }
+
+        // 상태별 동작
+        switch (this.aiState) {
+            case 'idle':
+                // 천천히 플레이어 따라가기
+                const dx = this.target.x - this.x;
+                const dy = this.target.y - this.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist > 0) {
+                    this.x += (dx / dist) * this.speed * deltaTime;
+                    this.y += (dy / dist) * this.speed * deltaTime;
+                }
+
+                // 패턴 타이머
+                this.patternTimer += deltaTime;
+                if (this.patternTimer >= this.PATTERN_INTERVAL) {
+                    this.patternTimer = 0;
+
+                    // 패턴 선택 (연속 방지)
+                    let newPattern;
+                    do {
+                        const rand = Math.random();
+                        if (rand < 0.3) {
+                            newPattern = 'teleport_charge';
+                        } else if (rand < 0.6) {
+                            newPattern = 'dash_charge';
+                        } else if (rand < 0.8) {
+                            newPattern = 'void_zone';
+                        } else {
+                            newPattern = 'smash_jump';
+                        }
+                    } while (newPattern === this.lastPattern && Math.random() < 0.8); // 80% 확률로 다시 뽑기 (완전 금지는 아님)
+
+                    this.aiState = newPattern;
+                    this.lastPattern = newPattern;
+                    this.aiTimer = 0;
+                    console.log(`심연의 추적자 패턴 시작: ${this.aiState}`);
+                }
+                break;
+
+            case 'void_zone':
+                // 공허 장판 생성
+                // 플레이어 주변 랜덤 위치 + 보스 주변 랜덤 위치
+                const zoneCount = 3;
+                for (let i = 0; i < zoneCount; i++) {
+                    // 플레이어 근처
+                    const angle = Math.random() * Math.PI * 2;
+                    const dist = Math.random() * 150;
+                    let zx = game.player.x + Math.cos(angle) * dist;
+                    let zy = game.player.y + Math.sin(angle) * dist;
+
+                    // 맵 밖으로 안 나가게
+                    zx = Math.max(100, Math.min(game.canvas.width - 100, zx));
+                    zy = Math.max(100, Math.min(game.canvas.height - 100, zy));
+
+                    const zone = new PoisonZone(zx, zy, '#9900cc', 1, 5.0); // 보라색, 1데미지, 5초 지속
+                    game.poisonZones.push(zone);
+                }
+                this.aiState = 'idle';
+                break;
+
+            case 'smash_jump':
+                // 도약 (위로 사라짐)
+                this.aiTimer += deltaTime;
+                // 점점 투명해지거나 작아짐 (y축 이동 시뮬레이션)
+                const jumpProgress = this.aiTimer / this.SMASH_JUMP_TIME;
+                this.opacity = 1.0 - jumpProgress;
+                this.y -= 1000 * deltaTime; // 위로 이동
+
+                if (this.aiTimer >= this.SMASH_JUMP_TIME) {
+                    this.aiState = 'smash_airborne';
+                    this.aiTimer = 0;
+                    this.opacity = 0;
+                    this.y = -500; // 화면 밖
+                }
+                break;
+
+            case 'smash_airborne':
+                // 공중 체공 (플레이어 추적 - 그림자만 이동)
+                this.aiTimer += deltaTime;
+                // 그림자 위치 업데이트 (플레이어 위치로)
+                this.smashTargetX = game.player.x;
+                this.smashTargetY = game.player.y;
+
+                if (this.aiTimer >= this.SMASH_AIR_TIME) {
+                    this.aiState = 'smash_fall';
+                    this.aiTimer = 0;
+                    // 최종 낙하 위치 확정
+                    this.x = this.smashTargetX;
+                    this.y = this.smashTargetY - 1000; // 낙하 시작 높이
+                }
+                break;
+
+            case 'smash_fall':
+                // 낙하 (급강하)
+                this.aiTimer += deltaTime;
+                const fallSpeed = 2000; // 속도 감소 (3000 -> 2000)
+                this.y += fallSpeed * deltaTime;
+                this.opacity = 1.0;
+
+                // 지면 도달 (목표 y좌표 도달)
+                // 지면 도달 (목표 y좌표 도달)
+                if (this.y >= this.smashTargetY) {
+                    this.y = this.smashTargetY;
+
+                    // 충격 효과
+                    game.shakeScreen(15, 0.5);
+                    game.spawnParticles(this.x, this.y, '#9900cc', 30);
+
+                    // 데미지 판정 (범위 내 플레이어)
+                    // 플레이어는 점프 등으로 피할 수 없음 (2D Top-down)
+                    const dx = game.player.x - this.x;
+                    const dy = game.player.y - this.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 150) { // 충격 반경
+                        game.player.takeDamage(this.SMASH_DAMAGE);
+                    }
+
+                    // 갈라진 땅 효과 생성 (여기서만 그리는 객체 추가)
+                    this.crackedGrounds.push({
+                        x: this.x,
+                        y: this.y,
+                        timer: 5.0, // 5초 유지
+                        scale: 1.0
+                    });
+
+                    console.log("공허 강습 충격!");
+
+                    // 충격 후 딜레이 (회복 시간)
+                    this.aiState = 'smash_recovery';
+                    this.aiTimer = 1.0; // 1초 동안 멍때림 (데미지 없음)
+                    this.isHarmless = true; // 접촉 데미지 비활성화
+                }
+                break;
+
+            case 'smash_recovery':
+                // 착지 후 잠시 휴식 (무방비? 혹은 그냥 데미지 안주는 상태)
+                this.aiTimer -= deltaTime;
+                if (this.aiTimer <= 0) {
+                    this.aiState = 'idle';
+                    this.isHarmless = false; // 다시 데미지 활성화
+                }
+                break;
+
+            case 'teleport_charge':
+                // 텔레포트 준비 (투명해짐 + 전조 효과)
+                this.aiTimer += deltaTime;
+
+                // 텔레포트 각도 결정 (처음 한 번만)
+                if (this.teleportAngle == null) {
+                    this.teleportAngle = Math.random() * Math.PI * 2;
+                }
+
+                // 목표 위치 추적 (텔레포트 0.4초 전까지 플레이어 추적)
+                // 이렇게 하면 플레이어를 따라다니다가 마지막에 고정됨
+                if (this.aiTimer < this.TELEPORT_CHARGE_TIME - 0.4) {
+                    const radius = 150; // 거리 좁힘 (200 -> 150)
+                    const targetX = game.player.x + Math.cos(this.teleportAngle) * radius;
+                    const targetY = game.player.y + Math.sin(this.teleportAngle) * radius;
+                    // 방 범위 제한
+                    this.teleportTargetX = Math.max(100, Math.min(game.canvas.width - 100, targetX));
+                    this.teleportTargetY = Math.max(100, Math.min(game.canvas.height - 100, targetY));
+                }
+
+                if (this.aiTimer >= this.TELEPORT_CHARGE_TIME) {
+                    // 텔레포트 실행
+                    this.x = this.teleportTargetX;
+                    this.y = this.teleportTargetY;
+
+                    // 탄막 발사 (24방향 - 3배 증가)
+                    const projectileCount = 24;
+                    for (let i = 0; i < projectileCount; i++) {
+                        const shotAngle = (Math.PI * 2 / projectileCount) * i;
+                        game.spawnBossProjectile(this.x, this.y, Math.cos(shotAngle), Math.sin(shotAngle));
+                    }
+                    console.log('심연의 추적자 텔레포트 및 탄막 발사');
+
+                    this.aiState = 'idle';
+                    this.teleportTargetX = null;
+                    this.teleportTargetY = null;
+                    this.teleportAngle = null; // 각도 초기화
+                }
+                break;
+
+            case 'dash_charge':
+                // 돌진 준비 (멈춤, 방향 고정)
+                this.aiTimer += deltaTime;
+
+                // 돌진 방향 계산 (계속 업데이트하여 추적 -> 전조 효과용)
+                const dashDx = this.target.x - this.x;
+                const dashDy = this.target.y - this.y;
+                const dashDist = Math.sqrt(dashDx * dashDx + dashDy * dashDy);
+                this.dashDirX = dashDx / dashDist;
+                this.dashDirY = dashDy / dashDist;
+
+                if (this.aiTimer >= this.DASH_CHARGE_TIME) {
+                    this.aiState = 'dashing';
+                    this.aiTimer = 0;
+                }
+                break;
+
+            case 'dashing':
+                // 고속 이동
+                this.aiTimer += deltaTime;
+                this.x += this.dashDirX * this.DASH_SPEED * deltaTime;
+                this.y += this.dashDirY * this.DASH_SPEED * deltaTime;
+
+                if (this.aiTimer >= this.DASH_DURATION) {
+                    this.aiState = 'idle';
+                }
+                break;
+        }
+
+        // 방 밖으로 나가지 않도록
+        if (game.room) {
+            game.room.constrainEntity(this);
+        }
+    }
+
+    // 텔레포트 실행 (이제 위에서 직접 처리하므로 사용 안 함, 하지만 호환성을 위해 남겨둠)
+    executeTeleport(game) {
+        // ...
     }
 
     // Stage 3 Boss AI (화려한 패턴)
@@ -756,9 +1074,9 @@ class Enemy {
         // 패턴 실행
         switch (this.currentPattern) {
             case 0: // 원형 탄막
-                if (this.aiTimer >= 0.3) {
+                if (this.aiTimer >= 0.5) { // 발사 간격 증가 (0.3 -> 0.5)
                     this.aiTimer = 0;
-                    const bulletCount = 8 + this.currentPhase * 4;
+                    const bulletCount = 6 + this.currentPhase * 2; // 개수 감소 (8 + P*4 -> 6 + P*2)
                     for (let i = 0; i < bulletCount; i++) {
                         const angle = (Math.PI * 2 / bulletCount) * i;
                         const projectile = new Projectile(
@@ -775,11 +1093,11 @@ class Enemy {
                 break;
 
             case 1: // 나선형 탄막
-                if (this.aiTimer >= 0.1) {
+                if (this.aiTimer >= 0.2) { // 발사 간격 증가 (0.1 -> 0.2)
                     this.aiTimer = 0;
                     const spiralAngle = this.patternTimer * 5;
-                    for (let i = 0; i < 3; i++) {
-                        const angle = spiralAngle + (Math.PI * 2 / 3) * i;
+                    for (let i = 0; i < 2; i++) { // 줄기 감소 (3 -> 2)
+                        const angle = spiralAngle + (Math.PI * 2 / 2) * i;
                         const projectile = new Projectile(
                             this.x, this.y,
                             Math.cos(angle), Math.sin(angle),
@@ -793,14 +1111,14 @@ class Enemy {
                 break;
 
             case 2: // 플레이어 추적 탄막
-                if (this.aiTimer >= 0.5) {
+                if (this.aiTimer >= 0.8) { // 발사 간격 증가 (0.5 -> 0.8)
                     this.aiTimer = 0;
                     const dx = this.target.x - this.x;
                     const dy = this.target.y - this.y;
                     const dist = Math.sqrt(dx * dx + dy * dy);
 
                     if (dist > 0) {
-                        const spreadCount = 3 + this.currentPhase;
+                        const spreadCount = 1 + this.currentPhase; // 개수 감소 (3+P -> 1+P)
                         for (let i = 0; i < spreadCount; i++) {
                             const spreadAngle = Math.atan2(dy, dx) + (i - spreadCount / 2) * 0.3;
                             const projectile = new Projectile(
@@ -818,18 +1136,18 @@ class Enemy {
                 break;
 
             case 3: // 폭발 패턴
-                if (this.aiTimer >= 1.0) {
+                if (this.aiTimer >= 1.5) { // 발사 간격 증가 (1.0 -> 1.5)
                     this.aiTimer = 0;
                     // 랜덤 위치에 폭발
-                    for (let i = 0; i < 3 + this.currentPhase; i++) {
+                    for (let i = 0; i < 2 + this.currentPhase; i++) { // 개수 감소 (3 -> 2)
                         const angle = Math.random() * Math.PI * 2;
                         const dist = 100 + Math.random() * 150;
                         const explosionX = this.x + Math.cos(angle) * dist;
                         const explosionY = this.y + Math.sin(angle) * dist;
 
                         // 폭발 지점에서 사방으로 탄막
-                        for (let j = 0; j < 8; j++) {
-                            const bulletAngle = (Math.PI * 2 / 8) * j;
+                        for (let j = 0; j < 6; j++) { // 개수 감소 (8 -> 6)
+                            const bulletAngle = (Math.PI * 2 / 6) * j;
                             const projectile = new Projectile(
                                 explosionX, explosionY,
                                 Math.cos(bulletAngle), Math.sin(bulletAngle),
@@ -867,26 +1185,5 @@ class Enemy {
         }
     }
     // 데미지 받기
-    takeDamage(amount) {
-        // 공유 체력 시스템
-        if (this.sharedHealthPool) {
-            this.sharedHealthPool.current -= amount;
-            // 체력 동기화는 update에서 처리하거나 여기서 모든 공유 엔티티를 찾아서 업데이트해야 함
-            // 간단하게 자신의 체력만 업데이트하고, 나머지는 Game.update에서 동기화
-            this.health = this.sharedHealthPool.current;
-        } else {
-            this.health -= amount;
-        }
 
-        // 피격 효과
-        this.isHit = true;
-        this.hitAnimTime = 0;
-        // this.currentImage = this.imageHit; // 피격 이미지 있다면 사용
-
-        // 사망 체크
-        if (this.sharedHealthPool) {
-            return this.sharedHealthPool.current <= 0;
-        }
-        return this.health <= 0;
-    }
 }

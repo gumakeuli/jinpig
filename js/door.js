@@ -226,6 +226,28 @@ class Door {
             ctx.lineTo(skullX + 3, skullY + 15);
             ctx.stroke();
 
+            // 닫혀있으면(잠김) 쇠사슬/철창 그리기
+            if (!this.isOpen) {
+                ctx.strokeStyle = '#555555';
+                ctx.lineWidth = 4;
+
+                // X자 쇠사슬
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.y);
+                ctx.lineTo(this.x + this.width, this.y + this.height);
+                ctx.moveTo(this.x + this.width, this.y);
+                ctx.lineTo(this.x, this.y + this.height);
+                ctx.stroke();
+
+                // 자물쇠 (중앙)
+                ctx.fillStyle = '#333333';
+                ctx.strokeStyle = '#888888';
+                ctx.lineWidth = 2;
+                const lockSize = 20;
+                ctx.fillRect(centerX - lockSize / 2, centerY - lockSize / 2, lockSize, lockSize);
+                ctx.strokeRect(centerX - lockSize / 2, centerY - lockSize / 2, lockSize, lockSize);
+            }
+
         } else if (this.isOpen) {
             // 일반 열린 문 - 밝고 빛나는 느낌
             ctx.fillStyle = '#00ff00';

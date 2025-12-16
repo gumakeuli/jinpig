@@ -18,6 +18,7 @@ class Game {
         this.enemies = [];
         this.items = [];
         this.activeItems = []; // 활성화된 사용 아이템 (베기 등)
+        this.poisonZones = []; // 독 장판 (2스테이지 보스)
         this.stars = []; // 별의 소리
         this.room = null;
         this.ui = new UI(this.canvas.width, this.canvas.height);
@@ -552,7 +553,7 @@ class Game {
         } else {
             // 새로운 방 로드
             // 방 타입에 따라 로드
-            const hasEnemies = roomData.type !== 'start' && roomData.type !== 'shop' && !roomData.cleared;
+            const hasEnemies = roomData.type !== 'start' && roomData.type !== 'shop' && roomData.type !== 'boss' && roomData.type !== 'altar' && roomData.type !== 'treasure' && !roomData.cleared;
             this.loadRoom(hasEnemies, roomData.type, roomData.neighbors);
 
             // 새로운 방이므로 별의 소리 초기화
@@ -633,27 +634,14 @@ class Game {
             if (this.level === 3) {
                 boss = this.spawnEnemy(roomWidth / 2, roomHeight / 2, 'stage3_boss');
             } else if (this.level === 2) {
-                // 2스테이지 보스: 벌집 수호자 + 쫄몹 2마리
-                boss = this.spawnEnemy(roomWidth / 2, roomHeight / 2 - 100, 'hive_boss');
-
-                // 쫄몹 생성 (왼쪽, 오른쪽)
-                const leftMinion = this.spawnEnemy(roomWidth / 2 - 200, roomHeight / 2 + 100, 'hive_left_minion');
-                const rightMinion = this.spawnEnemy(roomWidth / 2 + 200, roomHeight / 2 + 100, 'hive_right_minion');
-
-                // 공유 체력 설정
-                const sharedHealthPool = { current: 200, max: 200 };
-                boss.sharedHealthPool = sharedHealthPool;
-                leftMinion.sharedHealthPool = sharedHealthPool;
-                rightMinion.sharedHealthPool = sharedHealthPool;
-
-                // 보스에게 쫄몹 참조 저장
-                boss.minions = [leftMinion, rightMinion];
+                // 2스테이지 보스: 엘리시아 (단일 보스, 쫄몹 없음)
+                boss = this.spawnEnemy(roomWidth / 2, roomHeight / 2, 'hive_boss');
             } else {
                 boss = this.spawnEnemy(roomWidth / 2, roomHeight / 2, 'boss');
             }
 
-            // 보스 인트로 활성화 (레벨 1만)
-            if (this.level === 1 && boss && boss.bossName) {
+            // 보스 인트로 활성화 (모든 보스)
+            if (boss && boss.bossName) {
                 this.bossIntro.active = true;
                 this.bossIntro.boss = boss;
                 this.bossIntro.timer = 0;
@@ -670,7 +658,8 @@ class Game {
                 { type: 'lilith_body', image: 'assets/images/items/1.png' },
                 { type: 'mystery_item', image: 'assets/images/items/3.png' },
                 { type: 'soda_komibol', image: 'assets/images/items/2.jpg' },
-                { type: 'montelli_gun', image: 'assets/images/items/5.webp' }
+                { type: 'montelli_gun', image: 'assets/images/items/5.webp' },
+                { type: 'golden_wave_pattern', image: 'assets/images/items/24.webp' }
             ];
 
             // 임딱 모드: 2스테이지부터 무라사마 추가
@@ -703,25 +692,36 @@ class Game {
             // 1. 회복 포션 (가격 7)
             const potion = new Item(centerX - spacing, centerY, 'potion', 'assets/images/items/16.png');
             potion.price = 7;
+            if (this.player && this.player.hasDiscount) potion.price = Math.max(1, potion.price - 5);
             this.items.push(potion);
 
             // 2. 스탯 업그레이드 (릴리바이스의 바디) (가격 20~30 랜덤)
             const statUp = new Item(centerX, centerY, 'lilith_body', 'assets/images/items/1.png');
             statUp.price = Math.floor(Math.random() * 11) + 20; // 20 ~ 30
+            if (this.player && this.player.hasDiscount) statUp.price = Math.max(1, statUp.price - 5);
             statUp.hideNameInShop = true;
             this.items.push(statUp);
 
             // 3. 랜덤 장비 (가격 20~30 랜덤)
+            // 3. 랜덤 장비 (가격 20~30 랜덤) - 모든 스테이지에서 랜덤하게 등장
             const equipmentTypes = [
+                // 기본 장비
                 { type: 'mystery_item', image: 'assets/images/items/3.png' },
                 { type: 'soda_komibol', image: 'assets/images/items/2.jpg' },
-                { type: 'montelli_gun', image: 'assets/images/items/5.webp' }
+                { type: 'montelli_gun', image: 'assets/images/items/5.webp' },
+                // 속성/방어 장비
+                { type: 'fire_sword', image: 'assets/images/items/6.jpg' },
+                { type: 'ice_spear', image: 'assets/images/items/6.jpg' },
+                { type: 'iron_shield', image: 'assets/images/items/4.png' },
+                { type: 'poison_dagger', image: 'assets/images/items/6.jpg' },
+                // 특수/전설 장비
+                { type: 'double_shot', image: 'assets/images/items/5.webp' },
+                { type: 'explosive_bullets', image: 'assets/images/items/5.webp' },
+                { type: 'tga_award', image: 'assets/images/items/22.png' },
+                { type: 'murasama', image: 'assets/images/items/20.gif' },
+                { type: 'moonlight', image: 'assets/images/items/23.webp' },
+                { type: 'fate_coffin', image: 'assets/images/items/25.webp' }
             ];
-
-            // 임딱 모드: 2스테이지부터 무라사마 추가
-            if (this.gameMode === 'imdak' && this.level >= 2) {
-                equipmentTypes.push({ type: 'murasama', image: 'assets/images/items/20.gif' });
-            }
 
             // 미보유 장비만 필터링
             const availableEquip = equipmentTypes.filter(item => !this.collectedItems.has(item.type));
@@ -730,47 +730,19 @@ class Game {
                 const randomEquip = availableEquip[Math.floor(Math.random() * availableEquip.length)];
                 const equipItem = new Item(centerX + spacing, centerY, randomEquip.type, randomEquip.image);
                 equipItem.price = Math.floor(Math.random() * 11) + 20; // 20 ~ 30
+                if (this.player && this.player.hasDiscount) equipItem.price = Math.max(1, equipItem.price - 5);
                 equipItem.hideNameInShop = true;
                 this.items.push(equipItem);
             } else {
                 // 장비를 다 모았으면 포션 하나 더 (가격 7)
                 const extraPotion = new Item(centerX + spacing, centerY, 'potion', 'assets/images/items/16.png');
                 extraPotion.price = 7;
+                if (this.player && this.player.hasDiscount) extraPotion.price = Math.max(1, extraPotion.price - 5);
                 this.items.push(extraPotion);
             }
 
             this.room.openAllDoors();
-        } else if (roomType === 'boss') {
-            // 보스방 - 문은 처음부터 열려있음
-            this.room.openAllDoors();
 
-            // 레벨에 따라 보스 생성
-            const centerX = roomWidth / 2;
-            const centerY = roomHeight / 2;
-
-            if (this.level === 1) {
-                // 1스테이지 보스
-                this.spawnEnemy(centerX, centerY, 'boss');
-            } else if (this.level === 2) {
-                // 2스테이지 보스: 벌집 수호자 + 쫄몹 2마리
-                const boss = this.spawnEnemy(centerX, centerY - 100, 'hive_boss');
-
-                // 쫄몹 생성 (왼쪽, 오른쪽)
-                const leftMinion = this.spawnEnemy(centerX - 200, centerY + 100, 'hive_left_minion');
-                const rightMinion = this.spawnEnemy(centerX + 200, centerY + 100, 'hive_right_minion');
-
-                // 공유 체력 설정
-                const sharedHealthPool = { current: 200, max: 200 };
-                boss.sharedHealthPool = sharedHealthPool;
-                leftMinion.sharedHealthPool = sharedHealthPool;
-                rightMinion.sharedHealthPool = sharedHealthPool;
-
-                // 보스에게 쫄몹 참조 저장
-                boss.minions = [leftMinion, rightMinion];
-            } else if (this.level === 3) {
-                // 3스테이지 보스
-                this.spawnEnemy(centerX, centerY, 'stage3_boss');
-            }
         } else if (roomType === 'altar') {
             // 제단 방
             this.altar = new Altar(this.canvas.width / 2, this.canvas.height / 2);
@@ -902,6 +874,14 @@ class Game {
         this.items.push(item);
     }
 
+    // 보스 탄막 생성 헬퍼 함수
+    spawnBossProjectile(x, y, dirX, dirY) {
+        const projectile = new Projectile(x, y, dirX, dirY, 1, true); // 데미지 1, 적 투사체
+        projectile.color = '#9900cc'; // 보라색
+        projectile.speed = 300;
+        this.projectiles.push(projectile);
+    }
+
     // 보스 클리어 시 호출
     onBossCleared() {
         if (this.level >= this.maxLevel) {
@@ -1011,85 +991,8 @@ class Game {
 
     // 2스테이지 보스 로직 (변신 및 체력 공유)
     updateStage2Boss(deltaTime) {
-        if (this.level !== 2) return;
-
-        const boss = this.enemies.find(e => e.type === 'hive_boss');
-        if (!boss || !boss.active) return;
-
-        // 체력 동기화 (모든 공유 엔티티)
-        if (boss.sharedHealthPool) {
-            this.enemies.forEach(e => {
-                if (e.sharedHealthPool === boss.sharedHealthPool) {
-                    e.health = boss.sharedHealthPool.current;
-                }
-            });
-        }
-
-        const healthPercent = boss.sharedHealthPool.current / boss.sharedHealthPool.max;
-
-        // 변신 트리거 (60%)
-        if (healthPercent <= 0.6 && boss.transformationPhase === 0) {
-            console.log('2스테이지 보스 변신 시작 (60%)');
-            boss.transformationPhase = 1; // 변신 중
-            boss.isTransforming = true;
-            boss.transformTimer = 0;
-
-            // 플레이어 얼리기
-            this.playerFrozen = true;
-
-            // 쫄몹 변신 이미지 설정 (8번, 9번)
-            boss.minions.forEach(minion => {
-                if (minion.transformImage) {
-                    minion.imageIdle.src = minion.transformImage;
-                }
-            });
-        }
-
-        // 변신 진행 중
-        if (boss.isTransforming) {
-            boss.transformTimer += deltaTime;
-
-            // 보스 및 쫄몹 공격 중지 (AI 상태 변경)
-            // 실제 AI 로직에서 isTransforming 체크 필요
-
-            // 변신 완료 (3초 후)
-            if (boss.transformTimer >= boss.transformDuration) {
-                console.log('2스테이지 보스 변신 완료');
-                boss.isTransforming = false;
-                this.playerFrozen = false;
-
-                // 최종 이미지 및 위치 설정
-                // 3번(보스): 위쪽
-                boss.x = this.canvas.width / 2;
-                boss.y = 150;
-
-                boss.minions.forEach(minion => {
-                    if (minion.finalImage) {
-                        minion.imageIdle.src = minion.finalImage;
-                    }
-
-                    // 위치 재배치
-                    if (minion.type === 'hive_left_minion') {
-                        minion.x = 150;
-                        minion.y = this.canvas.height / 2;
-                    } else if (minion.type === 'hive_right_minion') {
-                        minion.x = this.canvas.width - 150;
-                        minion.y = this.canvas.height / 2;
-                    }
-                });
-            }
-        }
-
-        // 추가 소환 트리거 (40%)
-        if (healthPercent <= 0.4 && boss.transformationPhase === 1 && !boss.isTransforming) {
-            console.log('2스테이지 보스 추가 소환 (40%)');
-            boss.transformationPhase = 2;
-
-            // 10번 쫄몹 소환 (중앙 아래)
-            const finalMinion = this.spawnEnemy(this.canvas.width / 2, this.canvas.height / 2 + 150, 'hive_final_minion');
-            finalMinion.sharedHealthPool = boss.sharedHealthPool;
-            boss.minions.push(finalMinion);
-        }
+        // 쫄몹 시스템 제거됨 - 단일 보스만 사용
+        return;
     }
 
     update(deltaTime, currentTime) {
@@ -1288,12 +1191,39 @@ class Game {
                         spawnX,
                         spawnY,
                         angle,
-                        5 + this.player.damage * 1.5, // 데미지 공식 변경: 5 + 공격력 * 1.5
+                        3 + this.player.damage * 1.0, // 데미지 너프: 3 + 공격력 * 1.0
                         'assets/images/items/21.gif'
                     );
                     this.activeItems.push(slash);
                     this.player.useItem(1.5); // 공격 속도 감소 (쿨타임 1.5초)
                     console.log('무라사마 공격 사용!');
+                } else if (this.player.getActiveItem() === 'fate_coffin') {
+                    // 숙명에 맞서는 관 (월광참)
+                    // 플레이어가 바라보는 방향으로 발사
+                    let dirX = 0;
+                    let dirY = 0;
+
+                    switch (this.player.lastDirection) {
+                        case 'up': case 'w': dirY = -1; break;
+                        case 'down': case 's': dirY = 1; break;
+                        case 'left': case 'a': dirX = -1; break;
+                        case 'right': case 'd': dirX = 1; break;
+                        default: dirY = 1; break; // 기본 아래
+                    }
+
+                    const projectile = new Projectile(
+                        this.player.x,
+                        this.player.y,
+                        dirX,
+                        dirY,
+                        2 + this.player.damage * 0.5, // 데미지
+                        false, // isEnemy
+                        'moon_slash' // type
+                    );
+
+                    this.projectiles.push(projectile);
+                    this.player.useItem(3.0); // 쿨타임 3초
+                    console.log('월광참 발사!');
                 }
             }
         }
@@ -1376,27 +1306,6 @@ class Game {
         // 적 업데이트
         for (let i = this.enemies.length - 1; i >= 0; i--) {
             this.enemies[i].update(deltaTime, this);
-
-            // 2스테이지 보스: 40% HP에서 추가 쫄몹 소환
-            const enemy = this.enemies[i];
-            if (enemy.type === 'hive_boss' && enemy.sharedHealthPool) {
-                const healthPercent = enemy.sharedHealthPool.current / enemy.sharedHealthPool.max;
-
-                // 40% HP 도달 시 추가 쫄몹 소환 (한 번만)
-                if (healthPercent <= 0.4 && !enemy.hasSpawnedFinalMinion) {
-                    enemy.hasSpawnedFinalMinion = true;
-
-                    // 추가 쫄몹 소환 (중앙 아래)
-                    const roomWidth = this.room.canvasWidth;
-                    const roomHeight = this.room.canvasHeight;
-                    const finalMinion = this.spawnEnemy(roomWidth / 2, roomHeight / 2 + 150, 'hive_final_minion');
-
-                    // 공유 체력 연결
-                    finalMinion.sharedHealthPool = enemy.sharedHealthPool;
-
-                    console.log('2스테이지 보스 40% HP! 추가 쫄몹 소환!');
-                }
-            }
 
             // 방 경계 제약
             if (this.room) {
@@ -1546,8 +1455,8 @@ class Game {
                     if (!roomData.cleared) {
                         roomData.cleared = true;
 
-                        // 방 클리어 보상 (별의 소리 1~3개)
-                        const rewardCount = Math.floor(Math.random() * 3) + 1;
+                        // 방 클리어 보상 (별의 소리 1~2개)
+                        const rewardCount = Math.floor(Math.random() * 2) + 1;
                         for (let i = 0; i < rewardCount; i++) {
                             // 플레이어 주변에 드롭
                             this.spawnStar(this.player.x + (Math.random() - 0.5) * 50, this.player.y + (Math.random() - 0.5) * 50);
@@ -1721,7 +1630,7 @@ class Game {
         // 플레이어 vs 적 충돌
         for (const enemy of this.enemies) {
             // 소환 중인 적은 데미지를 주지 않음
-            if (enemy.isSpawning) continue;
+            if (enemy.isSpawning || enemy.isHarmless) continue;
 
             const enemyBounds = enemy.getBounds();
 
@@ -1981,9 +1890,9 @@ class Game {
             // 아이템 이름 (이미지 아래)
             this.ctx.fillText(`${this.pickedItemName}`, this.canvas.width / 2, 185);
 
-            this.ctx.font = '14px Arial';
-            this.ctx.fillStyle = '#ccc';
-            this.ctx.fillText(this.pickedItemDescription, this.canvas.width / 2, 205);
+            // this.ctx.font = '14px Arial';
+            // this.ctx.fillStyle = '#ccc';
+            // this.ctx.fillText(this.pickedItemDescription, this.canvas.width / 2, 205);
             this.ctx.restore();
         }
 
@@ -2182,7 +2091,7 @@ class Game {
         this.ctx.fillText('WASD : 이동', startX, startY);
         this.ctx.fillText('방향키 : 공격', startX, startY + lineHeight);
         this.ctx.fillText('Space : 상호작용', startX, startY + lineHeight * 2);
-        this.ctx.fillText('Tab : 아이템 슬롯 전환', startX, startY + lineHeight * 3);
+        this.ctx.fillText('F : 아이템 슬롯 전환', startX, startY + lineHeight * 3);
         this.ctx.fillText('Shift : 대쉬 (2스테이지+)', startX, startY + lineHeight * 4);
 
         // 시작 안내

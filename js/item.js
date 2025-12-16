@@ -246,6 +246,66 @@ class Item {
                     }
                 };
                 break;
+            case 'tga_award':
+                this.name = '2025 TGA PLAYER\'S VOICE AWARD';
+                this.description = '모든 능력치 +3';
+                this.color = '#00CED1'; // 시안 블루
+                this.price = 50; // 50 별의 소리
+                this.effect = (player) => {
+                    // 최대 체력 +3
+                    if (player.maxHealth < player.maxHealthCap) {
+                        const increase = Math.min(3, player.maxHealthCap - player.maxHealth);
+                        player.maxHealth += increase;
+                        player.health += increase; // 늘어난 만큼 회복
+                    }
+                    // 공격력 +3
+                    if (player.damage < player.damageCap) {
+                        const increase = Math.min(3, player.damageCap - player.damage);
+                        player.damage += increase;
+                    }
+                    // 공격속도 +3
+                    if (player.attackSpeed < player.attackSpeedCap) {
+                        const increase = Math.min(3, player.attackSpeedCap - player.attackSpeed);
+                        player.attackSpeed += increase;
+                        player.updateFireRate(); // 공격속도 변경 반영
+                    }
+                    // 행운 +3
+                    if (player.luck < player.luckCap) {
+                        const increase = Math.min(3, player.luckCap - player.luck);
+                        player.luck += increase;
+                    }
+                };
+                break;
+            case 'golden_wave_pattern':
+                this.name = '금빛 파도의 무늬';
+                this.description = '상점 아이템 가격 5 할인';
+                this.color = '#FFD700'; // 금색
+                this.effect = (player) => {
+                    player.hasDiscount = true;
+                    console.log('금빛 파도의 무늬 획득! 상점 할인 적용');
+                };
+                break;
+            case 'moonlight':
+                this.name = '달빛';
+                this.description = '10초마다 데미지를 1회 막아주는 보호막 생성';
+                this.color = '#F0F8FF'; // AliceBlue
+                this.price = 25;
+                this.effect = (player) => {
+                    player.hasMoonlight = true;
+                    player.moonShield = true; // 획득 즉시 보호막 생성
+                    player.moonShieldTimer = 0;
+                    console.log('달빛 획득!');
+                };
+                break;
+            case 'fate_coffin':
+                this.name = '숙명에 맞서는 관';
+                this.description = '운명을 거스르는 힘 (사용 시 월광참)';
+                this.color = '#B0C4DE'; // LightSteelBlue
+                this.effect = (player) => {
+                    player.addItemToSlot('fate_coffin', this.itemImage);
+                    console.log('숙명에 맞서는 관 획득!');
+                };
+                break;
             default:
                 this.name = '알 수 없는 아이템';
                 this.description = '효과 없음';

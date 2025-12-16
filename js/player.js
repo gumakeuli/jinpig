@@ -96,12 +96,17 @@ class Player {
         this.itemMaxCooldown = 2; // 2초 쿨다운 (후딜레이 증가)
 
         this.keys.space = false;
-        this.keys.q = false;
+        this.keys.f = false;
         this.keys.shift = false;
 
         // 아이템 효과 플래그
         this.hasSodaKomibol = false;
         this.hasMontelliGun = false;
+        this.hasDiscount = false; // 상점 할인 (금빛 파도의 무늬)
+        this.hasMoonlight = false; // 달빛 아이템
+        this.moonShield = false; // 보호막 활성화 여부
+        this.moonShieldTimer = 0;
+        this.moonShieldCooldown = 10; // 10초 쿨다운
 
         // 대쉬 능력
         this.hasDash = false; // 2스테이지에서 획득
@@ -152,10 +157,10 @@ class Player {
             case 'Spacebar':
                 this.keys.space = true;
                 break;
-            // 슬롯 전환 - Q
-            case 'q':
-            case 'Q':
-                this.keys.q = true;
+            // 슬롯 전환 - F
+            case 'f':
+            case 'F':
+                this.keys.f = true;
                 // 슬롯 전환
                 this.currentSlot = (this.currentSlot + 1) % 2;
                 console.log(`슬롯 전환: ${this.currentSlot}`);
@@ -204,10 +209,10 @@ class Player {
             case 'Spacebar':
                 this.keys.space = false;
                 break;
-            // 슬롯 전환 - Q
-            case 'q':
-            case 'Q':
-                this.keys.q = false;
+            // 슬롯 전환 - F
+            case 'f':
+            case 'F':
+                this.keys.f = false;
                 break;
             // 대쉬 - Shift
             case 'Shift':
@@ -252,6 +257,16 @@ class Player {
             if (this.invincibleTime >= this.invincibleDuration) {
                 this.invincible = false;
                 this.invincibleTime = 0;
+            }
+        }
+
+        // 달빛 보호막 재생성
+        if (this.hasMoonlight && !this.moonShield) {
+            this.moonShieldTimer += deltaTime;
+            if (this.moonShieldTimer >= this.moonShieldCooldown) {
+                this.moonShield = true;
+                this.moonShieldTimer = 0;
+                console.log("달빛 보호막 생성!");
             }
         }
 
@@ -338,6 +353,22 @@ class Player {
             return;
         }
 
+        // 달빛 보호막 오라 표시
+        if (this.moonShield) {
+            ctx.save();
+            ctx.strokeStyle = '#F0F8FF'; // AliceBlue
+            ctx.lineWidth = 3;
+            // 부드럽게 깜빡이는 효과
+            ctx.globalAlpha = 0.5 + Math.sin(Date.now() / 500) * 0.2;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.width / 1.5 + 5, 0, Math.PI * 2); // 캐릭터보다 약간 크게
+            ctx.stroke();
+            // 내부 희미한 채우기
+            ctx.fillStyle = 'rgba(240, 248, 255, 0.1)';
+            ctx.fill();
+            ctx.restore();
+        }
+
         // 이미지가 로드되었으면 이미지로, 아니면 사각형으로
         // 이미지가 하나라도 로드되었고 현재 이미지가 유효하면 그리기
         if (this.currentImage && this.currentImage.complete && this.currentImage.naturalWidth > 0) {
@@ -389,6 +420,20 @@ class Player {
         // 행운에 따른 회피 확률 체크
         const dodgeChance = this.luck; // 행운 1당 1%
         const randomValue = Math.random() * 100; // 0~100
+
+        // 달빛 보호막 체크
+        if (this.moonShield) {
+            this.moonShield = false;
+            this.moonShieldTimer = 0;
+            // 보호막 파괴 효과 (추후 구현 가능)
+            console.log("달빛 보호막이 공격을 막았습니다!");
+
+            // 짧은 무적 시간 부여 (연속 피격 방지)
+            this.invincible = true;
+            this.invincibleTime = 0;
+            this.invincibleDuration = 500; // 0.5초
+            return false;
+        }
 
         if (randomValue < dodgeChance) {
             // 회피 성공!
