@@ -597,593 +597,698 @@ class Enemy {
 
         }
 
-        // 체력바
-        if (this.health < this.maxHealth) {
-            const barWidth = this.width;
-            const barHeight = 4;
-            const barX = this.x - barWidth / 2;
-            const barY = this.y - this.height / 2 - 8;
+    }
 
-            // 배경 (빨간색)
-            ctx.fillStyle = '#660000';
-            ctx.fillRect(barX, barY, barWidth, barHeight);
+    // 1스테이지 보스 레이저 그리기
+    if(this.type === 'boss') {
+    if (this.aiState === 'laser_charging' || this.aiState === 'laser_firing') {
+        const laserLen = 1000;
+        const endX = this.x + Math.cos(this.laserAngle) * laserLen;
+        const endY = this.y + Math.sin(this.laserAngle) * laserLen;
 
-            // 현재 체력 (녹색)
-            ctx.fillStyle = '#00ff00';
-            const healthPercent = this.health / this.maxHealth;
-            ctx.fillRect(barX, barY, barWidth * healthPercent, barHeight);
+        ctx.save();
+        if (this.aiState === 'laser_charging') {
+            // 경고 라인 (얇은 빨간선)
+            ctx.strokeStyle = `rgba(255, 0, 0, 0.5)`;
+            ctx.lineWidth = 2;
+            ctx.setLineDash([10, 10]); // 점선
+            ctx.beginPath();
+            ctx.moveTo(this.x, this.y);
+            ctx.lineTo(endX, endY);
+            ctx.stroke();
+        } else if (this.aiState === 'laser_firing') {
+            // 발사 (굵은 빔)
+            ctx.strokeStyle = '#ff0000'; // 빨강
+            ctx.lineWidth = 40; // 굵기
+            ctx.beginPath();
+            ctx.moveTo(this.x, this.y);
+            ctx.lineTo(endX, endY);
+            ctx.stroke();
+
+            // 내부 흰색 코어
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 15;
+            ctx.beginPath();
+            ctx.moveTo(this.x, this.y);
+            ctx.lineTo(endX, endY);
+            ctx.stroke();
+        }
+        ctx.restore();
+    }
+}
+
+// 체력바
+if (this.health < this.maxHealth) {
+    const barWidth = this.width;
+    const barHeight = 4;
+    const barX = this.x - barWidth / 2;
+    const barY = this.y - this.height / 2 - 8;
+
+    // 배경 (빨간색)
+    ctx.fillStyle = '#660000';
+    ctx.fillRect(barX, barY, barWidth, barHeight);
+
+    // 현재 체력 (녹색)
+    ctx.fillStyle = '#00ff00';
+    const healthPercent = this.health / this.maxHealth;
+    ctx.fillRect(barX, barY, barWidth * healthPercent, barHeight);
+}
+    }
+
+// 데미지 받기
+takeDamage(amount) {
+    if (this.isSpawning) return false;
+
+    this.health -= amount;
+    this.hitFlash = 1;
+
+    // 피격 애니메이션 시작
+    this.isHit = true;
+    this.hitAnimTime = 0;
+    // imageHit이 있으면 사용, 없으면 imageIdle 유지 (보스의 경우)
+    if (this.imageHit && this.imageHit.src && this.imageHit.complete) {
+        this.currentImage = this.imageHit;
+    }
+
+    if (this.health <= 0) {
+        this.active = false;
+        return true; // 죽음
+    }
+    return false;
+}
+
+// 충돌 체크용 경계 가져오기
+getBounds() {
+    return {
+        x: this.x - this.width / 2,
+        y: this.y - this.height / 2,
+        width: this.width,
+        height: this.height
+    };
+}
+
+// 별의 소리 드랍 개수 계산
+getStarDropCount() {
+    const random = Math.random();
+    let cumulativeChance = 0;
+
+    for (const drop of this.starDropTable) {
+        cumulativeChance += drop.chance;
+        if (random <= cumulativeChance) {
+            return drop.count;
         }
     }
 
-    // 데미지 받기
-    takeDamage(amount) {
-        if (this.isSpawning) return false;
+    return 0; // 기본값
+}
 
-        this.health -= amount;
-        this.hitFlash = 1;
-
-        // 피격 애니메이션 시작
-        this.isHit = true;
-        this.hitAnimTime = 0;
-        // imageHit이 있으면 사용, 없으면 imageIdle 유지 (보스의 경우)
-        if (this.imageHit && this.imageHit.src && this.imageHit.complete) {
-            this.currentImage = this.imageHit;
-        }
-
-        if (this.health <= 0) {
-            this.active = false;
-            return true; // 죽음
-        }
-        return false;
+// 보스 AI 업데이트
+updateBossAI(deltaTime, game) {
+    // 쿨타임 감소
+    if (this.aiTimer > 0) {
+        this.aiTimer -= deltaTime;
     }
 
-    // 충돌 체크용 경계 가져오기
-    getBounds() {
-        return {
-            x: this.x - this.width / 2,
-            y: this.y - this.height / 2,
-            width: this.width,
-            height: this.height
-        };
-    }
+    // 하이브 보스 (2스테이지)
+    if (this.type === 'hive_boss') {
+        switch (this.aiState) {
+            case 'idle':
+                if (this.aiTimer <= 0) {
+                    this.aiState = 'summon_wave';
+                }
+                break;
+            case 'summon_wave':
+                // 대량 소환 (8마리)
+                const minionCount = 8;
+                for (let i = 0; i < minionCount; i++) {
+                    const angle = (Math.PI * 2 / minionCount) * i;
+                    const spawnDist = 120;
+                    const sx = this.x + Math.cos(angle) * spawnDist;
+                    const sy = this.y + Math.sin(angle) * spawnDist;
 
-    // 별의 소리 드랍 개수 계산
-    getStarDropCount() {
-        const random = Math.random();
-        let cumulativeChance = 0;
+                    // 화면 밖으로 나가지 않게 조정
+                    const clampedX = Math.max(60, Math.min(game.canvas.width - 60, sx));
+                    const clampedY = Math.max(60, Math.min(game.canvas.height - 60, sy));
 
-        for (const drop of this.starDropTable) {
-            cumulativeChance += drop.chance;
-            if (random <= cumulativeChance) {
-                return drop.count;
-            }
-        }
+                    game.spawnEnemy(clampedX, clampedY, 'hive_minion');
+                }
 
-        return 0; // 기본값
-    }
-
-    // 보스 AI 업데이트
-    updateBossAI(deltaTime, game) {
-        // 쿨타임 감소
-        if (this.aiTimer > 0) {
-            this.aiTimer -= deltaTime;
-        }
-
-        // 하이브 보스 (2스테이지)
-        if (this.type === 'hive_boss') {
-            switch (this.aiState) {
-                case 'idle':
-                    if (this.aiTimer <= 0) {
-                        this.aiState = 'summon_wave';
-                    }
-                    break;
-                case 'summon_wave':
-                    // 대량 소환 (8마리)
-                    const minionCount = 8;
-                    for (let i = 0; i < minionCount; i++) {
-                        const angle = (Math.PI * 2 / minionCount) * i;
-                        const spawnDist = 120;
+                // 체력이 50% 이하면 추가 소환 (광폭화)
+                if (this.health < this.maxHealth * 0.5) {
+                    for (let i = 0; i < 4; i++) {
+                        const angle = Math.random() * Math.PI * 2;
+                        const spawnDist = 180;
                         const sx = this.x + Math.cos(angle) * spawnDist;
                         const sy = this.y + Math.sin(angle) * spawnDist;
 
-                        // 화면 밖으로 나가지 않게 조정
                         const clampedX = Math.max(60, Math.min(game.canvas.width - 60, sx));
                         const clampedY = Math.max(60, Math.min(game.canvas.height - 60, sy));
 
                         game.spawnEnemy(clampedX, clampedY, 'hive_minion');
                     }
-
-                    // 체력이 50% 이하면 추가 소환 (광폭화)
-                    if (this.health < this.maxHealth * 0.5) {
-                        for (let i = 0; i < 4; i++) {
-                            const angle = Math.random() * Math.PI * 2;
-                            const spawnDist = 180;
-                            const sx = this.x + Math.cos(angle) * spawnDist;
-                            const sy = this.y + Math.sin(angle) * spawnDist;
-
-                            const clampedX = Math.max(60, Math.min(game.canvas.width - 60, sx));
-                            const clampedY = Math.max(60, Math.min(game.canvas.height - 60, sy));
-
-                            game.spawnEnemy(clampedX, clampedY, 'hive_minion');
-                        }
-                    }
-
-                    this.aiState = 'idle';
-                    this.aiTimer = 4.0; // 4초마다 소환 (웨이브 디펜스 느낌)
-                    break;
-            }
-            return;
-        }
-
-        // 기존 보스 (1스테이지)
-        switch (this.aiState) {
-            case 'idle':
-                // 플레이어 향해 천천히 이동
-                const dx = this.target.x - this.x;
-                const dy = this.target.y - this.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                if (dist > 0) {
-                    this.x += (dx / dist) * this.speed * 0.5 * deltaTime;
-                    this.y += (dy / dist) * this.speed * 0.5 * deltaTime;
                 }
 
-                // 패턴 선택
-                if (this.aiTimer <= 0) {
-                    const rand = Math.random();
-                    if (rand < 0.4) {
-                        // 40% 확률: 발사
-                        this.aiState = 'shoot';
-                    } else if (rand < 0.7) {
-                        // 30% 확률: 돌진
-                        this.aiState = 'warning';
-                        this.aiTimer = 1.0; // 1초 경고
-                        this.dashTarget = { x: this.target.x, y: this.target.y };
-                    } else {
-                        // 30% 확률: 소환
-                        this.aiState = 'summon';
-                    }
-                }
+                this.aiState = 'idle';
+                this.aiTimer = 4.0; // 4초마다 소환 (웨이브 디펜스 느낌)
                 break;
+        }
+        return;
+    }
 
-            case 'shoot':
-                // 8방향 발사
-                const directions = [
-                    { x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 },
-                    { x: 0.7, y: 0.7 }, { x: 0.7, y: -0.7 }, { x: -0.7, y: 0.7 }, { x: -0.7, y: -0.7 }
-                ];
+    // 기존 보스 (1스테이지)
+    switch (this.aiState) {
+        case 'idle':
+            // 플레이어 향해 천천히 이동
+            const dx = this.target.x - this.x;
+            const dy = this.target.y - this.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist > 0) {
+                this.x += (dx / dist) * this.speed * 0.5 * deltaTime;
+                this.y += (dy / dist) * this.speed * 0.5 * deltaTime;
+            }
 
-                for (const dir of directions) {
-                    const projectile = new Projectile(this.x, this.y, dir.x, dir.y, this.damage);
-                    projectile.isEnemy = true;
-                    projectile.color = '#ff00ff';
-                    game.projectiles.push(projectile);
+            // 패턴 선택
+            if (this.aiTimer <= 0) {
+                const rand = Math.random();
+                if (rand < 0.3) {
+                    // 30% 확률: 발사
+                    this.aiState = 'shoot';
+                } else if (rand < 0.5) {
+                    // 20% 확률: 돌진
+                    this.aiState = 'warning';
+                    this.aiTimer = 1.0; // 1초 경고
+                    this.dashTarget = { x: this.target.x, y: this.target.y };
+                } else if (rand < 0.8) {
+                    // 30% 확률: 레이저 (신규 패턴)
+                    this.aiState = 'laser_charging';
+                    this.aiTimer = 1.2; // 1.2초 조준
+                    this.laserAngle = 0;
+                } else {
+                    // 20% 확률: 소환
+                    this.aiState = 'summon';
                 }
+            }
+            break;
 
+        case 'shoot':
+            // 8방향 발사
+            const directions = [
+                { x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 },
+                { x: 0.7, y: 0.7 }, { x: 0.7, y: -0.7 }, { x: -0.7, y: 0.7 }, { x: -0.7, y: -0.7 }
+            ];
+
+            for (const dir of directions) {
+                const projectile = new Projectile(this.x, this.y, dir.x, dir.y, this.damage);
+                projectile.isEnemy = true;
+                projectile.color = '#ff00ff';
+                game.projectiles.push(projectile);
+            }
+
+            this.aiState = 'idle';
+            this.aiTimer = 2.0; // 2초 쿨타임
+            break;
+
+        case 'warning':
+            // 경고 상태 (그리기에서 처리)
+            if (this.aiTimer <= 0) {
+                this.aiState = 'dash';
+                this.aiTimer = 0.5; // 0.5초 돌진
+
+                // 돌진 방향 계산
+                const dashDx = this.dashTarget.x - this.x;
+                const dashDy = this.dashTarget.y - this.y;
+                const dashDist = Math.sqrt(dashDx * dashDx + dashDy * dashDy);
+
+                if (dashDist > 0) {
+                    this.dashDir = { x: dashDx / dashDist, y: dashDy / dashDist };
+                } else {
+                    this.dashDir = { x: 0, y: 0 };
+                }
+            }
+            break;
+
+        case 'dash':
+            // 돌진
+            const dashSpeed = 400;
+            this.x += this.dashDir.x * dashSpeed * deltaTime;
+            this.y += this.dashDir.y * dashSpeed * deltaTime;
+
+            if (this.aiTimer <= 0) {
                 this.aiState = 'idle';
                 this.aiTimer = 2.0; // 2초 쿨타임
-                break;
+            }
+            break;
 
-            case 'warning':
-                // 경고 상태 (그리기에서 처리)
-                if (this.aiTimer <= 0) {
-                    this.aiState = 'dash';
-                    this.aiTimer = 0.5; // 0.5초 돌진
+        case 'summon':
+            // 쫄몹 소환 (3마리)
+            for (let i = 0; i < 3; i++) {
+                const angle = (Math.PI * 2 / 3) * i;
+                const spawnDist = 100;
+                const sx = this.x + Math.cos(angle) * spawnDist;
+                const sy = this.y + Math.sin(angle) * spawnDist;
 
-                    // 돌진 방향 계산
-                    const dashDx = this.dashTarget.x - this.x;
-                    const dashDy = this.dashTarget.y - this.y;
-                    const dashDist = Math.sqrt(dashDx * dashDx + dashDy * dashDy);
+                game.spawnEnemy(sx, sy, 'boss_minion');
+            }
 
-                    if (dashDist > 0) {
-                        this.dashDir = { x: dashDx / dashDist, y: dashDy / dashDist };
-                    } else {
-                        this.dashDir = { x: 0, y: 0 };
+            this.aiState = 'idle';
+            this.aiTimer = 3.0; // 3초 쿨타임
+            break;
+
+        case 'laser_charging':
+            // 레이저 조준 (플레이어를 따라감)
+            if (this.target) {
+                const dx = this.target.x - this.x;
+                const dy = this.target.y - this.y;
+                this.laserAngle = Math.atan2(dy, dx);
+            }
+
+            if (this.aiTimer <= 0) {
+                this.aiState = 'laser_firing';
+                this.aiTimer = 1.0; // 1초간 발사
+                // 발사 시점에 각도 고정 (더 이상 업데이트 안함)
+            }
+            break;
+
+        case 'laser_firing':
+            // 레이저 발사 및 데미지 판정
+            if (this.aiTimer > 0) {
+                // 충돌 체크 (직선과 원의 거리)
+                // 간단하게 플레이어 중심에서 직선까지의 거리 계산
+                if (this.target) {
+                    const p = this.target; // 플레이어
+                    // 직선 방정식: Ax + By + C = 0
+                    // sin(angle)x - cos(angle)y + C = 0
+                    // 일반적인 점과 직선 사이 거리 공식보다는 내적/외적 활용
+
+                    // 보스에서 플레이어 벡터
+                    const dx = p.x - this.x;
+                    const dy = p.y - this.y;
+
+                    // 레이저 방향 단위 벡터
+                    const lx = Math.cos(this.laserAngle);
+                    const ly = Math.sin(this.laserAngle);
+
+                    // 투영 길이 (Projection)
+                    const proj = dx * lx + dy * ly;
+
+                    // 플레이어가 레이저 전방에 있는지 확인 (뒤에 있으면 안 맞음)
+                    if (proj > 0) {
+                        // 수직 거리 계산
+                        // 외적 크기 (2D) = |dx*ly - dy*lx|
+                        const dist = Math.abs(dx * ly - dy * lx);
+
+                        // 레이저 굵기 (반지름 20) + 플레이어 크기 고려
+                        if (dist < 20 + p.width / 2) {
+                            // 데미지 입힘 (틱 데미지 방지 필요하나 간단히 매프레임 체크.. 너무 아픔. 쿨타임 필요)
+                            if (!p.invincible) {
+                                p.takeDamage(1); // 1 데미지 (연타)
+                            }
+                        }
                     }
                 }
-                break;
+            }
 
-            case 'dash':
-                // 돌진
-                const dashSpeed = 400;
-                this.x += this.dashDir.x * dashSpeed * deltaTime;
-                this.y += this.dashDir.y * dashSpeed * deltaTime;
-
-                if (this.aiTimer <= 0) {
-                    this.aiState = 'idle';
-                    this.aiTimer = 2.0; // 2초 쿨타임
-                }
-                break;
-
-            case 'summon':
-                // 쫄몹 소환 (3마리)
-                for (let i = 0; i < 3; i++) {
-                    const angle = (Math.PI * 2 / 3) * i;
-                    const spawnDist = 100;
-                    const sx = this.x + Math.cos(angle) * spawnDist;
-                    const sy = this.y + Math.sin(angle) * spawnDist;
-
-                    game.spawnEnemy(sx, sy, 'boss_minion');
-                }
-
+            if (this.aiTimer <= 0) {
                 this.aiState = 'idle';
-                this.aiTimer = 3.0; // 3초 쿨타임
-                break;
+                this.aiTimer = 2.0; // 쿨타임
+            }
+            break;
+    }
+}
+
+// Hive Boss AI (웨이브 소환 시스템)
+// 심연의 추적자 AI (텔레포트 & 돌진)
+updateHiveBossAI(deltaTime, game) {
+    if (!this.target) return;
+
+    // 갈라진 땅 효과 업데이트
+    if (this.crackedGrounds) {
+        for (let i = this.crackedGrounds.length - 1; i >= 0; i--) {
+            this.crackedGrounds[i].timer -= deltaTime;
+            if (this.crackedGrounds[i].timer <= 0) {
+                this.crackedGrounds.splice(i, 1);
+            }
         }
     }
 
-    // Hive Boss AI (웨이브 소환 시스템)
-    // 심연의 추적자 AI (텔레포트 & 돌진)
-    updateHiveBossAI(deltaTime, game) {
-        if (!this.target) return;
+    // 상태별 동작
+    switch (this.aiState) {
+        case 'idle':
+            // 천천히 플레이어 따라가기
+            const dx = this.target.x - this.x;
+            const dy = this.target.y - this.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist > 0) {
+                this.x += (dx / dist) * this.speed * deltaTime;
+                this.y += (dy / dist) * this.speed * deltaTime;
+            }
 
-        // 갈라진 땅 효과 업데이트
-        if (this.crackedGrounds) {
-            for (let i = this.crackedGrounds.length - 1; i >= 0; i--) {
-                this.crackedGrounds[i].timer -= deltaTime;
-                if (this.crackedGrounds[i].timer <= 0) {
-                    this.crackedGrounds.splice(i, 1);
+            // 패턴 타이머
+            this.patternTimer += deltaTime;
+            if (this.patternTimer >= this.PATTERN_INTERVAL) {
+                this.patternTimer = 0;
+
+                // 패턴 선택 (연속 방지)
+                let newPattern;
+                do {
+                    const rand = Math.random();
+                    if (rand < 0.3) {
+                        newPattern = 'teleport_charge';
+                    } else if (rand < 0.6) {
+                        newPattern = 'dash_charge';
+                    } else if (rand < 0.8) {
+                        newPattern = 'void_zone';
+                    } else {
+                        newPattern = 'smash_jump';
+                    }
+                } while (newPattern === this.lastPattern && Math.random() < 0.8); // 80% 확률로 다시 뽑기 (완전 금지는 아님)
+
+                this.aiState = newPattern;
+                this.lastPattern = newPattern;
+                this.aiTimer = 0;
+                console.log(`심연의 추적자 패턴 시작: ${this.aiState}`);
+            }
+            break;
+
+        case 'void_zone':
+            // 공허 장판 생성
+            // 플레이어 주변 랜덤 위치 + 보스 주변 랜덤 위치
+            const zoneCount = 3;
+            for (let i = 0; i < zoneCount; i++) {
+                // 플레이어 근처
+                const angle = Math.random() * Math.PI * 2;
+                const dist = Math.random() * 150;
+                let zx = game.player.x + Math.cos(angle) * dist;
+                let zy = game.player.y + Math.sin(angle) * dist;
+
+                // 맵 밖으로 안 나가게
+                zx = Math.max(100, Math.min(game.canvas.width - 100, zx));
+                zy = Math.max(100, Math.min(game.canvas.height - 100, zy));
+
+                const zone = new PoisonZone(zx, zy, '#9900cc', 1, 5.0); // 보라색, 1데미지, 5초 지속
+                game.poisonZones.push(zone);
+            }
+            this.aiState = 'idle';
+            break;
+
+        case 'smash_jump':
+            // 도약 (위로 사라짐)
+            this.aiTimer += deltaTime;
+            // 점점 투명해지거나 작아짐 (y축 이동 시뮬레이션)
+            const jumpProgress = this.aiTimer / this.SMASH_JUMP_TIME;
+            this.opacity = 1.0 - jumpProgress;
+            this.y -= 1000 * deltaTime; // 위로 이동
+
+            if (this.aiTimer >= this.SMASH_JUMP_TIME) {
+                this.aiState = 'smash_airborne';
+                this.aiTimer = 0;
+                this.opacity = 0;
+                this.y = -500; // 화면 밖
+            }
+            break;
+
+        case 'smash_airborne':
+            // 공중 체공 (플레이어 추적 - 그림자만 이동)
+            this.aiTimer += deltaTime;
+            // 그림자 위치 업데이트 (플레이어 위치로)
+            this.smashTargetX = game.player.x;
+            this.smashTargetY = game.player.y;
+
+            if (this.aiTimer >= this.SMASH_AIR_TIME) {
+                this.aiState = 'smash_fall';
+                this.aiTimer = 0;
+                // 최종 낙하 위치 확정
+                this.x = this.smashTargetX;
+                this.y = this.smashTargetY - 1000; // 낙하 시작 높이
+            }
+            break;
+
+        case 'smash_fall':
+            // 낙하 (급강하)
+            this.aiTimer += deltaTime;
+            const fallSpeed = 2000; // 속도 감소 (3000 -> 2000)
+            this.y += fallSpeed * deltaTime;
+            this.opacity = 1.0;
+
+            // 지면 도달 (목표 y좌표 도달)
+            // 지면 도달 (목표 y좌표 도달)
+            if (this.y >= this.smashTargetY) {
+                this.y = this.smashTargetY;
+
+                // 충격 효과
+                game.shakeScreen(15, 0.5);
+                game.spawnParticles(this.x, this.y, '#9900cc', 30);
+
+                // 데미지 판정 (범위 내 플레이어)
+                // 플레이어는 점프 등으로 피할 수 없음 (2D Top-down)
+                const dx = game.player.x - this.x;
+                const dy = game.player.y - this.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < 150) { // 충격 반경
+                    game.player.takeDamage(this.SMASH_DAMAGE);
+                }
+
+                // 갈라진 땅 효과 생성 (여기서만 그리는 객체 추가)
+                this.crackedGrounds.push({
+                    x: this.x,
+                    y: this.y,
+                    timer: 5.0, // 5초 유지
+                    scale: 1.0
+                });
+
+                console.log("공허 강습 충격!");
+
+                // 충격 후 딜레이 (회복 시간)
+                this.aiState = 'smash_recovery';
+                this.aiTimer = 1.0; // 1초 동안 멍때림 (데미지 없음)
+                this.isHarmless = true; // 접촉 데미지 비활성화
+            }
+            break;
+
+        case 'smash_recovery':
+            // 착지 후 잠시 휴식 (무방비? 혹은 그냥 데미지 안주는 상태)
+            this.aiTimer -= deltaTime;
+            if (this.aiTimer <= 0) {
+                this.aiState = 'idle';
+                this.isHarmless = false; // 다시 데미지 활성화
+            }
+            break;
+
+        case 'teleport_charge':
+            // 텔레포트 준비 (투명해짐 + 전조 효과)
+            this.aiTimer += deltaTime;
+
+            // 텔레포트 각도 결정 (처음 한 번만)
+            if (this.teleportAngle == null) {
+                this.teleportAngle = Math.random() * Math.PI * 2;
+            }
+
+            // 목표 위치 추적 (텔레포트 0.4초 전까지 플레이어 추적)
+            // 이렇게 하면 플레이어를 따라다니다가 마지막에 고정됨
+            if (this.aiTimer < this.TELEPORT_CHARGE_TIME - 0.4) {
+                const radius = 150; // 거리 좁힘 (200 -> 150)
+                const targetX = game.player.x + Math.cos(this.teleportAngle) * radius;
+                const targetY = game.player.y + Math.sin(this.teleportAngle) * radius;
+                // 방 범위 제한
+                this.teleportTargetX = Math.max(100, Math.min(game.canvas.width - 100, targetX));
+                this.teleportTargetY = Math.max(100, Math.min(game.canvas.height - 100, targetY));
+            }
+
+            if (this.aiTimer >= this.TELEPORT_CHARGE_TIME) {
+                // 텔레포트 실행
+                this.x = this.teleportTargetX;
+                this.y = this.teleportTargetY;
+
+                // 탄막 발사 (24방향 - 3배 증가)
+                const projectileCount = 24;
+                for (let i = 0; i < projectileCount; i++) {
+                    const shotAngle = (Math.PI * 2 / projectileCount) * i;
+                    game.spawnBossProjectile(this.x, this.y, Math.cos(shotAngle), Math.sin(shotAngle));
+                }
+                console.log('심연의 추적자 텔레포트 및 탄막 발사');
+
+                this.aiState = 'idle';
+                this.teleportTargetX = null;
+                this.teleportTargetY = null;
+                this.teleportAngle = null; // 각도 초기화
+            }
+            break;
+
+        case 'dash_charge':
+            // 돌진 준비 (멈춤, 방향 고정)
+            this.aiTimer += deltaTime;
+
+            // 돌진 방향 계산 (계속 업데이트하여 추적 -> 전조 효과용)
+            const dashDx = this.target.x - this.x;
+            const dashDy = this.target.y - this.y;
+            const dashDist = Math.sqrt(dashDx * dashDx + dashDy * dashDy);
+            this.dashDirX = dashDx / dashDist;
+            this.dashDirY = dashDy / dashDist;
+
+            if (this.aiTimer >= this.DASH_CHARGE_TIME) {
+                this.aiState = 'dashing';
+                this.aiTimer = 0;
+            }
+            break;
+
+        case 'dashing':
+            // 고속 이동
+            this.aiTimer += deltaTime;
+            this.x += this.dashDirX * this.DASH_SPEED * deltaTime;
+            this.y += this.dashDirY * this.DASH_SPEED * deltaTime;
+
+            if (this.aiTimer >= this.DASH_DURATION) {
+                this.aiState = 'idle';
+            }
+            break;
+    }
+
+    // 방 밖으로 나가지 않도록
+    if (game.room) {
+        game.room.constrainEntity(this);
+    }
+}
+
+// 텔레포트 실행 (이제 위에서 직접 처리하므로 사용 안 함, 하지만 호환성을 위해 남겨둠)
+executeTeleport(game) {
+    // ...
+}
+
+// Stage 3 Boss AI (화려한 패턴)
+updateStage3BossAI(deltaTime, game) {
+    this.aiTimer += deltaTime;
+    this.patternTimer += deltaTime;
+
+    // 페이즈 체크
+    if (this.health <= this.phaseThreshold[1] && this.currentPhase < 3) {
+        this.currentPhase = 3;
+        console.log('최종 보스 페이즈 3 돌입!');
+        game.shakeScreen(15, 1.0);
+    } else if (this.health <= this.phaseThreshold[0] && this.currentPhase < 2) {
+        this.currentPhase = 2;
+        console.log('최종 보스 페이즈 2 돌입!');
+        game.shakeScreen(10, 0.8);
+    }
+
+    // 패턴 전환 (2초마다)
+    if (this.patternTimer >= 2.0) {
+        this.patternTimer = 0;
+        this.currentPattern = (this.currentPattern + 1) % 4;
+    }
+
+    // 패턴 실행
+    switch (this.currentPattern) {
+        case 0: // 원형 탄막
+            if (this.aiTimer >= 0.5) { // 발사 간격 증가 (0.3 -> 0.5)
+                this.aiTimer = 0;
+                const bulletCount = 6 + this.currentPhase * 2; // 개수 감소 (8 + P*4 -> 6 + P*2)
+                for (let i = 0; i < bulletCount; i++) {
+                    const angle = (Math.PI * 2 / bulletCount) * i;
+                    const projectile = new Projectile(
+                        this.x, this.y,
+                        Math.cos(angle), Math.sin(angle),
+                        this.damage
+                    );
+                    projectile.isEnemy = true;
+                    projectile.color = '#FF0000';
+                    game.projectiles.push(projectile);
+                }
+                game.spawnParticles(this.x, this.y, '#FF0000', 10);
+            }
+            break;
+
+        case 1: // 나선형 탄막
+            if (this.aiTimer >= 0.2) { // 발사 간격 증가 (0.1 -> 0.2)
+                this.aiTimer = 0;
+                const spiralAngle = this.patternTimer * 5;
+                for (let i = 0; i < 2; i++) { // 줄기 감소 (3 -> 2)
+                    const angle = spiralAngle + (Math.PI * 2 / 2) * i;
+                    const projectile = new Projectile(
+                        this.x, this.y,
+                        Math.cos(angle), Math.sin(angle),
+                        this.damage
+                    );
+                    projectile.isEnemy = true;
+                    projectile.color = '#FF00FF';
+                    game.projectiles.push(projectile);
                 }
             }
-        }
+            break;
 
-        // 상태별 동작
-        switch (this.aiState) {
-            case 'idle':
-                // 천천히 플레이어 따라가기
+        case 2: // 플레이어 추적 탄막
+            if (this.aiTimer >= 0.8) { // 발사 간격 증가 (0.5 -> 0.8)
+                this.aiTimer = 0;
                 const dx = this.target.x - this.x;
                 const dy = this.target.y - this.y;
                 const dist = Math.sqrt(dx * dx + dy * dy);
+
                 if (dist > 0) {
-                    this.x += (dx / dist) * this.speed * deltaTime;
-                    this.y += (dy / dist) * this.speed * deltaTime;
+                    const spreadCount = 1 + this.currentPhase; // 개수 감소 (3+P -> 1+P)
+                    for (let i = 0; i < spreadCount; i++) {
+                        const spreadAngle = Math.atan2(dy, dx) + (i - spreadCount / 2) * 0.3;
+                        const projectile = new Projectile(
+                            this.x, this.y,
+                            Math.cos(spreadAngle), Math.sin(spreadAngle),
+                            this.damage
+                        );
+                        projectile.isEnemy = true;
+                        projectile.color = '#FFFF00';
+                        game.projectiles.push(projectile);
+                    }
+                    game.spawnParticles(this.x, this.y, '#FFFF00', 15);
                 }
+            }
+            break;
 
-                // 패턴 타이머
-                this.patternTimer += deltaTime;
-                if (this.patternTimer >= this.PATTERN_INTERVAL) {
-                    this.patternTimer = 0;
-
-                    // 패턴 선택 (연속 방지)
-                    let newPattern;
-                    do {
-                        const rand = Math.random();
-                        if (rand < 0.3) {
-                            newPattern = 'teleport_charge';
-                        } else if (rand < 0.6) {
-                            newPattern = 'dash_charge';
-                        } else if (rand < 0.8) {
-                            newPattern = 'void_zone';
-                        } else {
-                            newPattern = 'smash_jump';
-                        }
-                    } while (newPattern === this.lastPattern && Math.random() < 0.8); // 80% 확률로 다시 뽑기 (완전 금지는 아님)
-
-                    this.aiState = newPattern;
-                    this.lastPattern = newPattern;
-                    this.aiTimer = 0;
-                    console.log(`심연의 추적자 패턴 시작: ${this.aiState}`);
-                }
-                break;
-
-            case 'void_zone':
-                // 공허 장판 생성
-                // 플레이어 주변 랜덤 위치 + 보스 주변 랜덤 위치
-                const zoneCount = 3;
-                for (let i = 0; i < zoneCount; i++) {
-                    // 플레이어 근처
+        case 3: // 폭발 패턴
+            if (this.aiTimer >= 1.5) { // 발사 간격 증가 (1.0 -> 1.5)
+                this.aiTimer = 0;
+                // 랜덤 위치에 폭발
+                for (let i = 0; i < 2 + this.currentPhase; i++) { // 개수 감소 (3 -> 2)
                     const angle = Math.random() * Math.PI * 2;
-                    const dist = Math.random() * 150;
-                    let zx = game.player.x + Math.cos(angle) * dist;
-                    let zy = game.player.y + Math.sin(angle) * dist;
+                    const dist = 100 + Math.random() * 150;
+                    const explosionX = this.x + Math.cos(angle) * dist;
+                    const explosionY = this.y + Math.sin(angle) * dist;
 
-                    // 맵 밖으로 안 나가게
-                    zx = Math.max(100, Math.min(game.canvas.width - 100, zx));
-                    zy = Math.max(100, Math.min(game.canvas.height - 100, zy));
-
-                    const zone = new PoisonZone(zx, zy, '#9900cc', 1, 5.0); // 보라색, 1데미지, 5초 지속
-                    game.poisonZones.push(zone);
-                }
-                this.aiState = 'idle';
-                break;
-
-            case 'smash_jump':
-                // 도약 (위로 사라짐)
-                this.aiTimer += deltaTime;
-                // 점점 투명해지거나 작아짐 (y축 이동 시뮬레이션)
-                const jumpProgress = this.aiTimer / this.SMASH_JUMP_TIME;
-                this.opacity = 1.0 - jumpProgress;
-                this.y -= 1000 * deltaTime; // 위로 이동
-
-                if (this.aiTimer >= this.SMASH_JUMP_TIME) {
-                    this.aiState = 'smash_airborne';
-                    this.aiTimer = 0;
-                    this.opacity = 0;
-                    this.y = -500; // 화면 밖
-                }
-                break;
-
-            case 'smash_airborne':
-                // 공중 체공 (플레이어 추적 - 그림자만 이동)
-                this.aiTimer += deltaTime;
-                // 그림자 위치 업데이트 (플레이어 위치로)
-                this.smashTargetX = game.player.x;
-                this.smashTargetY = game.player.y;
-
-                if (this.aiTimer >= this.SMASH_AIR_TIME) {
-                    this.aiState = 'smash_fall';
-                    this.aiTimer = 0;
-                    // 최종 낙하 위치 확정
-                    this.x = this.smashTargetX;
-                    this.y = this.smashTargetY - 1000; // 낙하 시작 높이
-                }
-                break;
-
-            case 'smash_fall':
-                // 낙하 (급강하)
-                this.aiTimer += deltaTime;
-                const fallSpeed = 2000; // 속도 감소 (3000 -> 2000)
-                this.y += fallSpeed * deltaTime;
-                this.opacity = 1.0;
-
-                // 지면 도달 (목표 y좌표 도달)
-                // 지면 도달 (목표 y좌표 도달)
-                if (this.y >= this.smashTargetY) {
-                    this.y = this.smashTargetY;
-
-                    // 충격 효과
-                    game.shakeScreen(15, 0.5);
-                    game.spawnParticles(this.x, this.y, '#9900cc', 30);
-
-                    // 데미지 판정 (범위 내 플레이어)
-                    // 플레이어는 점프 등으로 피할 수 없음 (2D Top-down)
-                    const dx = game.player.x - this.x;
-                    const dy = game.player.y - this.y;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-                    if (dist < 150) { // 충격 반경
-                        game.player.takeDamage(this.SMASH_DAMAGE);
-                    }
-
-                    // 갈라진 땅 효과 생성 (여기서만 그리는 객체 추가)
-                    this.crackedGrounds.push({
-                        x: this.x,
-                        y: this.y,
-                        timer: 5.0, // 5초 유지
-                        scale: 1.0
-                    });
-
-                    console.log("공허 강습 충격!");
-
-                    // 충격 후 딜레이 (회복 시간)
-                    this.aiState = 'smash_recovery';
-                    this.aiTimer = 1.0; // 1초 동안 멍때림 (데미지 없음)
-                    this.isHarmless = true; // 접촉 데미지 비활성화
-                }
-                break;
-
-            case 'smash_recovery':
-                // 착지 후 잠시 휴식 (무방비? 혹은 그냥 데미지 안주는 상태)
-                this.aiTimer -= deltaTime;
-                if (this.aiTimer <= 0) {
-                    this.aiState = 'idle';
-                    this.isHarmless = false; // 다시 데미지 활성화
-                }
-                break;
-
-            case 'teleport_charge':
-                // 텔레포트 준비 (투명해짐 + 전조 효과)
-                this.aiTimer += deltaTime;
-
-                // 텔레포트 각도 결정 (처음 한 번만)
-                if (this.teleportAngle == null) {
-                    this.teleportAngle = Math.random() * Math.PI * 2;
-                }
-
-                // 목표 위치 추적 (텔레포트 0.4초 전까지 플레이어 추적)
-                // 이렇게 하면 플레이어를 따라다니다가 마지막에 고정됨
-                if (this.aiTimer < this.TELEPORT_CHARGE_TIME - 0.4) {
-                    const radius = 150; // 거리 좁힘 (200 -> 150)
-                    const targetX = game.player.x + Math.cos(this.teleportAngle) * radius;
-                    const targetY = game.player.y + Math.sin(this.teleportAngle) * radius;
-                    // 방 범위 제한
-                    this.teleportTargetX = Math.max(100, Math.min(game.canvas.width - 100, targetX));
-                    this.teleportTargetY = Math.max(100, Math.min(game.canvas.height - 100, targetY));
-                }
-
-                if (this.aiTimer >= this.TELEPORT_CHARGE_TIME) {
-                    // 텔레포트 실행
-                    this.x = this.teleportTargetX;
-                    this.y = this.teleportTargetY;
-
-                    // 탄막 발사 (24방향 - 3배 증가)
-                    const projectileCount = 24;
-                    for (let i = 0; i < projectileCount; i++) {
-                        const shotAngle = (Math.PI * 2 / projectileCount) * i;
-                        game.spawnBossProjectile(this.x, this.y, Math.cos(shotAngle), Math.sin(shotAngle));
-                    }
-                    console.log('심연의 추적자 텔레포트 및 탄막 발사');
-
-                    this.aiState = 'idle';
-                    this.teleportTargetX = null;
-                    this.teleportTargetY = null;
-                    this.teleportAngle = null; // 각도 초기화
-                }
-                break;
-
-            case 'dash_charge':
-                // 돌진 준비 (멈춤, 방향 고정)
-                this.aiTimer += deltaTime;
-
-                // 돌진 방향 계산 (계속 업데이트하여 추적 -> 전조 효과용)
-                const dashDx = this.target.x - this.x;
-                const dashDy = this.target.y - this.y;
-                const dashDist = Math.sqrt(dashDx * dashDx + dashDy * dashDy);
-                this.dashDirX = dashDx / dashDist;
-                this.dashDirY = dashDy / dashDist;
-
-                if (this.aiTimer >= this.DASH_CHARGE_TIME) {
-                    this.aiState = 'dashing';
-                    this.aiTimer = 0;
-                }
-                break;
-
-            case 'dashing':
-                // 고속 이동
-                this.aiTimer += deltaTime;
-                this.x += this.dashDirX * this.DASH_SPEED * deltaTime;
-                this.y += this.dashDirY * this.DASH_SPEED * deltaTime;
-
-                if (this.aiTimer >= this.DASH_DURATION) {
-                    this.aiState = 'idle';
-                }
-                break;
-        }
-
-        // 방 밖으로 나가지 않도록
-        if (game.room) {
-            game.room.constrainEntity(this);
-        }
-    }
-
-    // 텔레포트 실행 (이제 위에서 직접 처리하므로 사용 안 함, 하지만 호환성을 위해 남겨둠)
-    executeTeleport(game) {
-        // ...
-    }
-
-    // Stage 3 Boss AI (화려한 패턴)
-    updateStage3BossAI(deltaTime, game) {
-        this.aiTimer += deltaTime;
-        this.patternTimer += deltaTime;
-
-        // 페이즈 체크
-        if (this.health <= this.phaseThreshold[1] && this.currentPhase < 3) {
-            this.currentPhase = 3;
-            console.log('최종 보스 페이즈 3 돌입!');
-            game.shakeScreen(15, 1.0);
-        } else if (this.health <= this.phaseThreshold[0] && this.currentPhase < 2) {
-            this.currentPhase = 2;
-            console.log('최종 보스 페이즈 2 돌입!');
-            game.shakeScreen(10, 0.8);
-        }
-
-        // 패턴 전환 (2초마다)
-        if (this.patternTimer >= 2.0) {
-            this.patternTimer = 0;
-            this.currentPattern = (this.currentPattern + 1) % 4;
-        }
-
-        // 패턴 실행
-        switch (this.currentPattern) {
-            case 0: // 원형 탄막
-                if (this.aiTimer >= 0.5) { // 발사 간격 증가 (0.3 -> 0.5)
-                    this.aiTimer = 0;
-                    const bulletCount = 6 + this.currentPhase * 2; // 개수 감소 (8 + P*4 -> 6 + P*2)
-                    for (let i = 0; i < bulletCount; i++) {
-                        const angle = (Math.PI * 2 / bulletCount) * i;
+                    // 폭발 지점에서 사방으로 탄막
+                    for (let j = 0; j < 6; j++) { // 개수 감소 (8 -> 6)
+                        const bulletAngle = (Math.PI * 2 / 6) * j;
                         const projectile = new Projectile(
-                            this.x, this.y,
-                            Math.cos(angle), Math.sin(angle),
+                            explosionX, explosionY,
+                            Math.cos(bulletAngle), Math.sin(bulletAngle),
                             this.damage
                         );
                         projectile.isEnemy = true;
-                        projectile.color = '#FF0000';
+                        projectile.color = '#FF8800';
                         game.projectiles.push(projectile);
                     }
-                    game.spawnParticles(this.x, this.y, '#FF0000', 10);
+                    game.spawnParticles(explosionX, explosionY, '#FF8800', 20);
+                    game.shakeScreen(5, 0.2);
                 }
-                break;
-
-            case 1: // 나선형 탄막
-                if (this.aiTimer >= 0.2) { // 발사 간격 증가 (0.1 -> 0.2)
-                    this.aiTimer = 0;
-                    const spiralAngle = this.patternTimer * 5;
-                    for (let i = 0; i < 2; i++) { // 줄기 감소 (3 -> 2)
-                        const angle = spiralAngle + (Math.PI * 2 / 2) * i;
-                        const projectile = new Projectile(
-                            this.x, this.y,
-                            Math.cos(angle), Math.sin(angle),
-                            this.damage
-                        );
-                        projectile.isEnemy = true;
-                        projectile.color = '#FF00FF';
-                        game.projectiles.push(projectile);
-                    }
-                }
-                break;
-
-            case 2: // 플레이어 추적 탄막
-                if (this.aiTimer >= 0.8) { // 발사 간격 증가 (0.5 -> 0.8)
-                    this.aiTimer = 0;
-                    const dx = this.target.x - this.x;
-                    const dy = this.target.y - this.y;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-
-                    if (dist > 0) {
-                        const spreadCount = 1 + this.currentPhase; // 개수 감소 (3+P -> 1+P)
-                        for (let i = 0; i < spreadCount; i++) {
-                            const spreadAngle = Math.atan2(dy, dx) + (i - spreadCount / 2) * 0.3;
-                            const projectile = new Projectile(
-                                this.x, this.y,
-                                Math.cos(spreadAngle), Math.sin(spreadAngle),
-                                this.damage
-                            );
-                            projectile.isEnemy = true;
-                            projectile.color = '#FFFF00';
-                            game.projectiles.push(projectile);
-                        }
-                        game.spawnParticles(this.x, this.y, '#FFFF00', 15);
-                    }
-                }
-                break;
-
-            case 3: // 폭발 패턴
-                if (this.aiTimer >= 1.5) { // 발사 간격 증가 (1.0 -> 1.5)
-                    this.aiTimer = 0;
-                    // 랜덤 위치에 폭발
-                    for (let i = 0; i < 2 + this.currentPhase; i++) { // 개수 감소 (3 -> 2)
-                        const angle = Math.random() * Math.PI * 2;
-                        const dist = 100 + Math.random() * 150;
-                        const explosionX = this.x + Math.cos(angle) * dist;
-                        const explosionY = this.y + Math.sin(angle) * dist;
-
-                        // 폭발 지점에서 사방으로 탄막
-                        for (let j = 0; j < 6; j++) { // 개수 감소 (8 -> 6)
-                            const bulletAngle = (Math.PI * 2 / 6) * j;
-                            const projectile = new Projectile(
-                                explosionX, explosionY,
-                                Math.cos(bulletAngle), Math.sin(bulletAngle),
-                                this.damage
-                            );
-                            projectile.isEnemy = true;
-                            projectile.color = '#FF8800';
-                            game.projectiles.push(projectile);
-                        }
-                        game.spawnParticles(explosionX, explosionY, '#FF8800', 20);
-                        game.shakeScreen(5, 0.2);
-                    }
-                }
-                break;
-        }
-
-        // 보스 이동 (플레이어 주변을 맴돔)
-        const dx = this.target.x - this.x;
-        const dy = this.target.y - this.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-
-        if (dist > 250) {
-            // 너무 멀면 접근
-            this.x += (dx / dist) * this.speed * deltaTime;
-            this.y += (dy / dist) * this.speed * deltaTime;
-        } else if (dist < 150) {
-            // 너무 가까우면 후퇴
-            this.x -= (dx / dist) * this.speed * deltaTime;
-            this.y -= (dy / dist) * this.speed * deltaTime;
-        } else {
-            // 적당한 거리에서 원을 그리며 이동
-            const orbitAngle = Math.atan2(dy, dx) + Math.PI / 2;
-            this.x += Math.cos(orbitAngle) * this.speed * deltaTime;
-            this.y += Math.sin(orbitAngle) * this.speed * deltaTime;
-        }
+            }
+            break;
     }
+
+    // 보스 이동 (플레이어 주변을 맴돔)
+    const dx = this.target.x - this.x;
+    const dy = this.target.y - this.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist > 250) {
+        // 너무 멀면 접근
+        this.x += (dx / dist) * this.speed * deltaTime;
+        this.y += (dy / dist) * this.speed * deltaTime;
+    } else if (dist < 150) {
+        // 너무 가까우면 후퇴
+        this.x -= (dx / dist) * this.speed * deltaTime;
+        this.y -= (dy / dist) * this.speed * deltaTime;
+    } else {
+        // 적당한 거리에서 원을 그리며 이동
+        const orbitAngle = Math.atan2(dy, dx) + Math.PI / 2;
+        this.x += Math.cos(orbitAngle) * this.speed * deltaTime;
+        this.y += Math.sin(orbitAngle) * this.speed * deltaTime;
+    }
+}
     // 데미지 받기
 
 }

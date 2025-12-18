@@ -56,6 +56,14 @@ class Game {
         this.transitionCooldown = 0; // 전환 후 쿨다운
         this.transitionCooldownDuration = 1000; // 1초 쿨다운
 
+        this.rerollImage = new Image();
+        this.rerollImage.src = 'assets/images/items/reroll_icon.png';
+        this.starImage = new Image();
+        this.starImage.src = 'assets/images/8.webp';
+
+        this.rerollStation = null;
+        this.canReroll = false;
+
         // 게임 모드 선택
         this.gameMode = null; // 'angko' or 'imdak'
         this.showModeSelection = false; // 모드 선택 화면 표시 여부
@@ -123,6 +131,34 @@ class Game {
         if (this.isCommandInputVisible) return;
 
         if (!this.isRunning || this.isPaused) return;
+
+        // 상호작용 (E키)
+        if (e.key === 'e' || e.key === 'E') {
+            if (this.canReroll && this.rerollStation && !this.rerollStation.used) {
+                if (this.starCount >= 5) {
+                    this.starCount -= 5;
+                    this.spawnShopItems();
+                    this.rerollStation.used = true;
+                    this.canReroll = false;
+
+                    // 효과음 및 파티클
+                    this.spawnParticles(this.rerollStation.x, this.rerollStation.y, '#00ffff', 20);
+                    this.pickedItemName = '상품 변경 완료!';
+                    this.pickedItemDescription = '남은 별의 소리: ' + this.starCount;
+                    this.pickedItemImage = this.rerollImage;
+                    this.showItemPickup = true;
+                    this.itemPickupTimer = 0;
+                } else {
+                    if (!this.itemPickupTimer || this.itemPickupTimer >= this.itemPickupDuration) {
+                        this.pickedItemName = '별의 소리가 부족합니다';
+                        this.pickedItemDescription = '비용: 5';
+                        this.pickedItemImage = null;
+                        this.showItemPickup = true;
+                        this.itemPickupTimer = 0;
+                    }
+                }
+            }
+        }
 
         // 방향키와 WASD 기본 동작 방지
         if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'W', 'a', 'A', 's', 'S', 'd', 'D'].includes(e.key)) {
@@ -475,6 +511,7 @@ class Game {
 
         // 방 상태 초기화 (새 던전)
         this.roomStates.clear();
+        this.rerollStation = null;
         this.portal = null;
         this.altar = null; // 제단 초기화
         this.projectiles = [];
@@ -524,9 +561,10 @@ class Game {
                 enemies: this.enemies,
                 items: this.items,
                 altar: this.altar, // 제단 상태 저장
+                rerollStation: this.rerollStation, // 리롤 기계 상태 저장
                 stars: this.stars, // 별의 소리도 방별로 저장
-                // 투사체는 저장하지 않음 (방 이동 시 제거)
-                visited: true
+                visited: true,
+                rewarded: this.roomRewarded // 보상 여부 저장
             });
         }
 
@@ -548,7 +586,9 @@ class Game {
             this.enemies = state.enemies;
             this.items = state.items;
             this.altar = state.altar; // 제단 상태 복원
+            this.rerollStation = state.rerollStation;
             this.stars = state.stars || []; // 별의 소리 복원 (없으면 빈 배열)
+            this.roomRewarded = state.rewarded || false;
             this.projectiles = []; // 투사체 초기화
         } else {
             // 새로운 방 로드
@@ -687,59 +727,17 @@ class Game {
             // 상점
             const centerX = this.canvas.width / 2;
             const centerY = this.canvas.height / 2; // 화면 중앙으로 이동
-            const spacing = 150;
+            // 상점 아이템 생성
+            this.spawnShopItems();
 
-            // 1. 회복 포션 (가격 7)
-            const potion = new Item(centerX - spacing, centerY, 'potion', 'assets/images/items/16.png');
-            potion.price = 7;
-            if (this.player && this.player.hasDiscount) potion.price = Math.max(1, potion.price - 5);
-            this.items.push(potion);
-
-            // 2. 스탯 업그레이드 (릴리바이스의 바디) (가격 20~30 랜덤)
-            const statUp = new Item(centerX, centerY, 'lilith_body', 'assets/images/items/1.png');
-            statUp.price = Math.floor(Math.random() * 11) + 20; // 20 ~ 30
-            if (this.player && this.player.hasDiscount) statUp.price = Math.max(1, statUp.price - 5);
-            statUp.hideNameInShop = true;
-            this.items.push(statUp);
-
-            // 3. 랜덤 장비 (가격 20~30 랜덤)
-            // 3. 랜덤 장비 (가격 20~30 랜덤) - 모든 스테이지에서 랜덤하게 등장
-            const equipmentTypes = [
-                // 기본 장비
-                { type: 'mystery_item', image: 'assets/images/items/3.png' },
-                { type: 'soda_komibol', image: 'assets/images/items/2.jpg' },
-                { type: 'montelli_gun', image: 'assets/images/items/5.webp' },
-                // 속성/방어 장비
-                { type: 'fire_sword', image: 'assets/images/items/6.jpg' },
-                { type: 'ice_spear', image: 'assets/images/items/6.jpg' },
-                { type: 'iron_shield', image: 'assets/images/items/4.png' },
-                { type: 'poison_dagger', image: 'assets/images/items/6.jpg' },
-                // 특수/전설 장비
-                { type: 'double_shot', image: 'assets/images/items/5.webp' },
-                { type: 'explosive_bullets', image: 'assets/images/items/5.webp' },
-                { type: 'tga_award', image: 'assets/images/items/22.png' },
-                { type: 'murasama', image: 'assets/images/items/20.gif' },
-                { type: 'moonlight', image: 'assets/images/items/23.webp' },
-                { type: 'fate_coffin', image: 'assets/images/items/25.webp' }
-            ];
-
-            // 미보유 장비만 필터링
-            const availableEquip = equipmentTypes.filter(item => !this.collectedItems.has(item.type));
-
-            if (availableEquip.length > 0) {
-                const randomEquip = availableEquip[Math.floor(Math.random() * availableEquip.length)];
-                const equipItem = new Item(centerX + spacing, centerY, randomEquip.type, randomEquip.image);
-                equipItem.price = Math.floor(Math.random() * 11) + 20; // 20 ~ 30
-                if (this.player && this.player.hasDiscount) equipItem.price = Math.max(1, equipItem.price - 5);
-                equipItem.hideNameInShop = true;
-                this.items.push(equipItem);
-            } else {
-                // 장비를 다 모았으면 포션 하나 더 (가격 7)
-                const extraPotion = new Item(centerX + spacing, centerY, 'potion', 'assets/images/items/16.png');
-                extraPotion.price = 7;
-                if (this.player && this.player.hasDiscount) extraPotion.price = Math.max(1, extraPotion.price - 5);
-                this.items.push(extraPotion);
-            }
+            // 리롤 스테이션 생성 (상점 주인 오른쪽)
+            this.rerollStation = {
+                x: this.canvas.width / 2 + 100,
+                y: this.canvas.height / 2 - 150,
+                width: 64,
+                height: 64,
+                used: false
+            };
 
             this.room.openAllDoors();
 
@@ -773,6 +771,11 @@ class Game {
             if (this.gameMode === 'angko' && this.level === 1) {
                 this.spawnItem(this.canvas.width / 2, this.canvas.height / 2 + 100, 'murasama', 'assets/images/items/20.gif');
             }
+        }
+
+        // 보상 상태 초기화 (새 방 진입 시, 로드된 상태가 덮어씌우지 않았다면)
+        if (this.roomRewarded === undefined) {
+            this.roomRewarded = false;
         }
 
         // 장애물 생성 (특수방 제외: 시작방, 보스방, 상점방, 아이템방, 석상방)
@@ -866,6 +869,66 @@ class Game {
         enemy.setTarget(this.player);
         this.enemies.push(enemy);
         return enemy; // 생성한 적 반환
+    }
+
+
+    spawnShopItems() {
+        const centerX = this.canvas.width / 2;
+        const centerY = this.canvas.height / 2;
+        const spacing = 150;
+
+        this.items = [];
+
+        // 1. 포션 (15)
+        const potion = new Item(centerX - spacing, centerY, 'potion', 'assets/images/items/16.png');
+        potion.price = 15;
+        if (this.player && this.player.hasDiscount) potion.price = Math.max(1, potion.price - 5);
+        this.items.push(potion);
+
+        const equipmentTypes = [
+            { type: 'lilith_body', image: 'assets/images/items/1.png' },
+            { type: 'mystery_item', image: 'assets/images/items/3.png' },
+            { type: 'soda_komibol', image: 'assets/images/items/2.jpg' },
+            { type: 'montelli_gun', image: 'assets/images/items/5.webp' },
+            { type: 'fire_sword', image: 'assets/images/items/6.jpg' },
+            { type: 'ice_spear', image: 'assets/images/items/6.jpg' },
+            { type: 'iron_shield', image: 'assets/images/items/4.png' },
+            { type: 'poison_dagger', image: 'assets/images/items/6.jpg' },
+            { type: 'double_shot', image: 'assets/images/items/5.webp' },
+            { type: 'explosive_bullets', image: 'assets/images/items/5.webp' },
+            { type: 'tga_award', image: 'assets/images/items/22.png' },
+            { type: 'murasama', image: 'assets/images/items/20.gif' },
+            { type: 'moonlight', image: 'assets/images/items/23.webp' },
+            { type: 'fate_coffin', image: 'assets/images/items/25.webp' }
+        ];
+
+        // 미보유 장비
+        let availableEquip = equipmentTypes.filter(item => !this.collectedItems.has(item.type));
+
+        // 2, 3번 슬롯 채우기
+        const slots = [{ x: centerX, y: centerY }, { x: centerX + spacing, y: centerY }];
+
+        for (const slot of slots) {
+            if (availableEquip.length > 0) {
+                const randIndex = Math.floor(Math.random() * availableEquip.length);
+                const randomEquip = availableEquip[randIndex];
+
+                const equipItem = new Item(slot.x, slot.y, randomEquip.type, randomEquip.image);
+                equipItem.price = Math.floor(Math.random() * 11) + 20; // 20 ~ 30
+                if (this.player && this.player.hasDiscount) equipItem.price = Math.max(1, equipItem.price - 5);
+                equipItem.hideNameInShop = true;
+                this.items.push(equipItem);
+
+                // 중복 방지: 리스트에서 제거
+                availableEquip.splice(randIndex, 1);
+            } else {
+                // 아이템 없으면 포션
+                const extraPotion = new Item(slot.x, slot.y, 'potion', 'assets/images/items/16.png');
+                extraPotion.price = 15;
+                if (this.player && this.player.hasDiscount) extraPotion.price = Math.max(1, extraPotion.price - 5);
+                this.items.push(extraPotion);
+            }
+        }
     }
 
     // 아이템 생성 헬퍼 함수
@@ -1349,11 +1412,13 @@ class Game {
             if (!this.enemies[i].active) {
                 const enemy = this.enemies[i];
 
-                // 별의 소리 드롭
+                // 별의 소리 드롭 (제거됨: 방 클리어 보상으로 변경)
+                /*
                 const starCount = enemy.getStarDropCount();
                 for (let j = 0; j < starCount; j++) {
                     this.spawnStar(enemy.x, enemy.y);
                 }
+                */
 
                 // 보스 처치 시 BGM 정지
                 if (enemy.type === 'boss' && this.isBossBGMPlaying) {
@@ -1380,6 +1445,30 @@ class Game {
 
                 this.enemies.splice(i, 1);
                 this.updateScore(10); // 적 처치 점수
+            }
+        }
+
+        // 방 클리어 보상 (일반 방, 몬스터 전멸 시)
+        if (this.enemies.length === 0 && this.room && !this.roomRewarded && this.dungeon && this.currentRoomId !== null) {
+            const roomData = this.dungeon.rooms.get(this.currentRoomId);
+            // 일반 방만 보상 (보스방, 상점 등 제외) - 보스방은 별도 보상 로직 있음? 보스방은 onBossCleared에서 처리.
+            // 여기선 'normal' 방만. 혹은 type이 없거나 check.
+            const isNormalRoom = !['shop', 'boss', 'start', 'treasure', 'altar'].includes(roomData.type);
+
+            if (isNormalRoom) {
+                this.roomRewarded = true;
+                // 1~2개 생성
+                const count = Math.floor(Math.random() * 2) + 1;
+                const cx = this.canvas.width / 2;
+                const cy = this.canvas.height / 2;
+
+                for (let k = 0; k < count; k++) {
+                    // 중앙 근처에 랜덤 산개
+                    const ox = (Math.random() - 0.5) * 50;
+                    const oy = (Math.random() - 0.5) * 50;
+                    this.spawnStar(cx + ox, cy + oy);
+                }
+                console.log(`방 클리어 보상: 별의 소리 ${count}개`);
             }
         }
 
@@ -1731,6 +1820,52 @@ class Game {
             }
         }
 
+        // 리롤 스테이션 충돌 체크 (상점)
+        if (this.rerollStation && !this.rerollStation.used && this.dungeon && this.currentRoomId !== null) {
+            const roomData = this.dungeon.rooms.get(this.currentRoomId);
+            if (roomData && roomData.type === 'shop') {
+                const rBounds = {
+                    x: this.rerollStation.x - this.rerollStation.width / 2,
+                    y: this.rerollStation.y - this.rerollStation.height / 2,
+                    width: this.rerollStation.width,
+                    height: this.rerollStation.height
+                };
+
+                const dx = this.player.x - this.rerollStation.x;
+                const dy = this.player.y - this.rerollStation.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist < 80) {
+                    this.canReroll = true;
+                }
+
+                if (false) {
+                    if (this.starCount >= 5) {
+                        this.starCount -= 5;
+                        this.spawnShopItems();
+                        this.rerollStation.used = true;
+
+                        // 효과음 및 파티클
+                        this.spawnParticles(this.rerollStation.x, this.rerollStation.y, '#00ffff', 20);
+                        this.pickedItemName = '상품 변경 완료!';
+                        this.pickedItemDescription = '남은 별의 소리: ' + this.starCount;
+                        this.pickedItemImage = this.rerollImage;
+                        this.showItemPickup = true;
+                        this.itemPickupTimer = 0;
+                    } else {
+                        // 비용 부족 (쿨타임 필요? 메시지 도배 방지)
+                        if (!this.itemPickupTimer || this.itemPickupTimer >= this.itemPickupDuration) {
+                            this.pickedItemName = '별의 소리가 부족합니다';
+                            this.pickedItemDescription = '비용: 5';
+                            this.pickedItemImage = null;
+                            this.showItemPickup = true;
+                            this.itemPickupTimer = 0;
+                        }
+                    }
+                }
+            }
+        }
+
         // 플레이어 vs 포탈 충돌 (다음 스테이지로 이동)
         if (this.portal && this.portal.active) {
             const portalBounds = this.portal.getBounds();
@@ -1763,6 +1898,80 @@ class Game {
                 const roomData = this.dungeon.rooms.get(this.currentRoomId);
                 if (roomData && roomData.type === 'shop') {
                     this.room.drawShopkeeper(this.ctx, deltaTime);
+
+                    // 리롤 스테이션 그리기
+                    if (this.rerollStation) {
+                        if (!this.rerollStation.used) {
+                            // 활성 상태
+                            const size = this.rerollStation.width;
+                            const floatY = Math.sin(Date.now() / 200) * 5;
+
+                            if (this.rerollImage && this.rerollImage.complete) {
+                                this.ctx.drawImage(
+                                    this.rerollImage,
+                                    this.rerollStation.x - size / 2,
+                                    this.rerollStation.y - size / 2 + floatY,
+                                    size,
+                                    size
+                                );
+                            } else {
+                                this.ctx.fillStyle = '#00ffff';
+                                this.ctx.fillRect(
+                                    this.rerollStation.x - size / 2,
+                                    this.rerollStation.y - size / 2 + floatY,
+                                    size,
+                                    size
+                                );
+                            }
+
+                            // 텍스트 (E 키 안내)
+                            if (this.canReroll) {
+                                this.ctx.fillStyle = '#ffffff';
+                                this.ctx.font = 'bold 16px Arial';
+                                this.ctx.textAlign = 'center';
+                                this.ctx.fillText('E키를 눌러 리롤', this.rerollStation.x, this.rerollStation.y - size / 2 + floatY - 30);
+
+                                // 가격 표시 (이미지 + 텍스트)
+                                const priceText = '5';
+                                this.ctx.font = 'bold 16px Arial';
+                                const tm = this.ctx.measureText(priceText);
+                                const iconSize = 25; // 아이콘 크기
+                                const gap = 5;
+                                const totalW = tm.width + iconSize + gap;
+
+                                const centerX = this.rerollStation.x;
+                                const startX = centerX - totalW / 2;
+                                const yPos = this.rerollStation.y - size / 2 + floatY - 10;
+
+                                // 텍스트
+                                this.ctx.textAlign = 'left';
+                                this.ctx.textBaseline = 'middle';
+                                this.ctx.fillText(priceText, startX, yPos + iconSize / 2);
+
+                                // 아이콘
+                                if (this.starImage && this.starImage.complete) {
+                                    this.ctx.drawImage(this.starImage, startX + tm.width + gap, yPos, iconSize, iconSize);
+                                }
+
+                                // 텍스트 기준 복구
+                                this.ctx.textBaseline = 'alphabetic';
+                            }
+                        } else {
+                            // 사용됨 (반투명)
+                            this.ctx.save();
+                            this.ctx.globalAlpha = 0.3;
+                            if (this.rerollImage && this.rerollImage.complete) {
+                                this.ctx.drawImage(
+                                    this.rerollImage,
+                                    this.rerollStation.x - this.rerollStation.width / 2,
+                                    this.rerollStation.y - this.rerollStation.height / 2,
+                                    this.rerollStation.width,
+                                    this.rerollStation.height
+                                );
+                            }
+                            this.ctx.restore();
+                        }
+                    }
                 }
             }
         }
@@ -1878,7 +2087,7 @@ class Game {
             // 아이템 이미지 표시
             if (this.pickedItemImage && this.pickedItemImage.complete) {
                 const imgSize = 60;
-                this.ctx.drawImage( // Changed ctx to this.ctx
+                this.ctx.drawImage(
                     this.pickedItemImage,
                     this.canvas.width / 2 - imgSize / 2,
                     110,
@@ -1887,8 +2096,11 @@ class Game {
                 );
             }
 
-            // 아이템 이름 (이미지 아래)
-            this.ctx.fillText(`${this.pickedItemName}`, this.canvas.width / 2, 185);
+            // 텍스트 위치 조정 (이미지 유무에 따라)
+            // 메시지(이미지 없음): 상자 중앙 (150)
+            // 아이템(이미지 있음): 더 아래로 (210)
+            const textY = this.pickedItemImage ? 210 : 150;
+            this.ctx.fillText(`${this.pickedItemName}`, this.canvas.width / 2, textY);
 
             // this.ctx.font = '14px Arial';
             // this.ctx.fillStyle = '#ccc';
