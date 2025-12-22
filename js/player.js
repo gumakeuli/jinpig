@@ -109,7 +109,7 @@ class Player {
         this.moonShieldCooldown = 10; // 10초 쿨다운
 
         // 대쉬 능력
-        this.hasDash = false; // 2스테이지에서 획득
+        this.hasDash = true; // 1스테이지부터 사용 가능
         this.isDashing = false;
         this.dashDuration = 0.15; // 대쉬 지속시간 (0.15초)
         this.dashTimer = 0;

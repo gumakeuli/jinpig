@@ -68,6 +68,7 @@ class Game {
         this.gameMode = null; // 'angko' or 'imdak'
         this.showModeSelection = false; // 모드 선택 화면 표시 여부
         this.showControlsScreen = false; // 조작법 화면 표시 여부
+        this.isGameOver = false; // 게임 오버 상태
 
         this.setupEventListeners();
         this.camera = { x: 0, y: 0 };
@@ -95,17 +96,20 @@ class Game {
             this.mouseY = (e.clientY - rect.top) * scaleY;
         });
 
-        // 마우스 클릭 (모드 선택용)
+        // 마우스 클릭 (모드 선택용 및 재시작 버튼용)
         this.canvas.addEventListener('click', (e) => {
+            const rect = this.canvas.getBoundingClientRect();
+            const scaleX = this.canvas.width / rect.width;
+            const scaleY = this.canvas.height / rect.height;
+
+            const clickX = (e.clientX - rect.left) * scaleX;
+            const clickY = (e.clientY - rect.top) * scaleY;
+
             if (this.showModeSelection) {
-                const rect = this.canvas.getBoundingClientRect();
-                const scaleX = this.canvas.width / rect.width;
-                const scaleY = this.canvas.height / rect.height;
-
-                const clickX = (e.clientX - rect.left) * scaleX;
-                const clickY = (e.clientY - rect.top) * scaleY;
-
                 this.handleModeSelection(clickX, clickY);
+            } else if (this.isGameOver) {
+                // 재시작 버튼 클릭 체크
+                this.handleRestartClick(clickX, clickY);
             }
         });
     }
@@ -610,8 +614,15 @@ class Game {
         let roomHeight = this.canvas.height;
 
         if (roomType === 'boss') {
-            roomWidth = this.canvas.width * 1.5;
-            roomHeight = this.canvas.height * 1.5;
+            // 스테이지별 보스방 크기 (각 스테이지마다 1.2배씩 증가)
+            let bossRoomScale = 1.5; // 1스테이지 기본
+            if (this.level === 2) {
+                bossRoomScale = 1.8; // 1.5 * 1.2
+            } else if (this.level === 3) {
+                bossRoomScale = 2.16; // 1.8 * 1.2
+            }
+            roomWidth = this.canvas.width * bossRoomScale;
+            roomHeight = this.canvas.height * bossRoomScale;
         }
 
         // 새 방 생성
@@ -1099,6 +1110,12 @@ class Game {
             const roomWidth = this.room ? this.room.canvasWidth : this.canvas.width;
             const roomHeight = this.room ? this.room.canvasHeight : this.canvas.height;
             this.player.update(deltaTime, roomWidth, roomHeight);
+
+            // 플레이어 사망 체크
+            if (this.player.health <= 0) {
+                this.gameOver();
+                return; // 게임 오버 시 더 이상 업데이트 하지 않음
+            }
 
             // 방 경계 제약 (현재 방 크기 기준)
             if (this.room) {
@@ -2317,16 +2334,117 @@ class Game {
 
     gameOver() {
         this.isRunning = false;
+        this.isGameOver = true;
 
-        // UI 게임오버 화면 표시
-        this.ui.drawGameOver(this.ctx, this.score);
+        // UI 게임오버 화면 표시 (다시하기 버튼 포함)
+        this.ui.drawGameOver(this.ctx, this.score, true);
+    }
 
-        // 타이틀 화면 다시 표시
-        setTimeout(() => {
-            if (typeof showTitle === 'function') {
-                showTitle();
-            }
-        }, 2000);
+    // 재시작 버튼 클릭 핸들러
+    handleRestartClick(clickX, clickY) {
+        // 다시하기 버튼 위치 (UI.drawGameOver와 동일한 위치)
+        const buttonWidth = 200;
+        const buttonHeight = 60;
+        const buttonX = this.canvas.width / 2 - buttonWidth / 2;
+        const buttonY = this.canvas.height / 2 + 60;
+
+        // 버튼 영역 안에 클릭했는지 확인
+        if (clickX >= buttonX && clickX <= buttonX + buttonWidth &&
+            clickY >= buttonY && clickY <= buttonY + buttonHeight) {
+            this.restartGame();
+        }
+    }
+
+    // 게임 재시작 (모든 상태 초기화)
+    restartGame() {
+        // 게임 오버 상태 해제
+        this.isGameOver = false;
+
+        // 게임 루프 정리
+        if (this.gameLoop) {
+            cancelAnimationFrame(this.gameLoop);
+            this.gameLoop = null;
+        }
+
+        // 모든 상태 초기화
+        this.score = 0;
+        this.starCount = 0;
+        this.level = 1;
+        this.collectedItems = new Set();
+
+        // 엔티티 초기화
+        this.projectiles = [];
+        this.enemies = [];
+        this.items = [];
+        this.activeItems = [];
+        this.stars = [];
+        this.particles = [];
+        this.poisonZones = [];
+        this.room = null;
+        this.portal = null;
+        this.altar = null;
+        this.rerollStation = null;
+
+        // 방 상태 초기화
+        this.roomStates = new Map();
+        this.currentRoomId = null;
+        this.dungeon = null;
+        this.minimap = null;
+
+        // 전환 상태 초기화
+        this.isTransitioning = false;
+        this.transitionTimer = 0;
+        this.nextRoomDirection = null;
+        this.transitionCooldown = 0;
+
+        // 화면 효과 초기화
+        this.showStageText = false;
+        this.showItemPickup = false;
+        this.camera = { x: 0, y: 0 };
+        this.screenShake = { x: 0, y: 0, intensity: 0, duration: 0 };
+
+        // BGM 정지
+        if (this.bossBGM && this.isBossBGMPlaying) {
+            this.bossBGM.pause();
+            this.bossBGM.currentTime = 0;
+            this.isBossBGMPlaying = false;
+        }
+
+        // 보스 인트로 초기화
+        this.bossIntro = {
+            active: false,
+            boss: null,
+            timer: 0,
+            duration: 3.0
+        };
+
+        // 게임 재시작
+        this.startGame();
+    }
+
+    // 게임 오버
+    gameOver() {
+        this.isRunning = false;
+        this.isGameOver = true;
+
+        // 게임 오버 화면 그리기 (다시하기 버튼 포함)
+        this.clear();
+        this.ui.drawGameOver(this.ctx, this.score, true);
+    }
+
+    // 재시작 버튼 클릭 핸들러
+    handleRestartClick(clickX, clickY) {
+        // 다시하기 버튼 위치
+        const buttonWidth = 200;
+        const buttonHeight = 60;
+        const buttonX = this.canvas.width / 2 - buttonWidth / 2;
+        const buttonY = this.canvas.height / 2 + 60;
+
+        // 버튼 클릭 체크
+        if (clickX >= buttonX && clickX <= buttonX + buttonWidth &&
+            clickY >= buttonY && clickY <= buttonY + buttonHeight) {
+            this.restartGame();
+        }
     }
 
     // 화면 흔들림 시작

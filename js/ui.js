@@ -255,7 +255,7 @@ class UI {
     }
 
     // 게임오버 화면
-    drawGameOver(ctx, score) {
+    drawGameOver(ctx, score, showRestartButton = false) {
         // 반투명 배경
         ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
         ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
@@ -271,12 +271,43 @@ class UI {
         ctx.font = 'bold 32px Arial';
         ctx.fillText(`최종 점수: ${score}`, this.canvasWidth / 2, this.canvasHeight / 2 + 20);
 
-        // 재시작 안내
-        ctx.font = '20px Arial';
-        ctx.fillStyle = '#aaaaaa';
-        ctx.fillText('잠시 후 게임 시작 버튼이 나타납니다', this.canvasWidth / 2, this.canvasHeight / 2 + 80);
+        // 다시하기 버튼
+        if (showRestartButton) {
+            const buttonWidth = 200;
+            const buttonHeight = 60;
+            const buttonX = this.canvasWidth / 2 - buttonWidth / 2;
+            const buttonY = this.canvasHeight / 2 + 60;
+
+            // 버튼 배경
+            ctx.fillStyle = '#4CAF50';
+            if (ctx.roundRect) {
+                ctx.beginPath();
+                ctx.roundRect(buttonX, buttonY, buttonWidth, buttonHeight, 10);
+                ctx.fill();
+            } else {
+                ctx.fillRect(buttonX, buttonY, buttonWidth, buttonHeight);
+            }
+
+            // 버튼 테두리
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(buttonX, buttonY, buttonWidth, buttonHeight);
+
+            // 버튼 텍스트
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 28px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('다시하기', this.canvasWidth / 2, buttonY + buttonHeight / 2);
+        } else {
+            // 재시작 안내 (기존)
+            ctx.font = '20px Arial';
+            ctx.fillStyle = '#aaaaaa';
+            ctx.fillText('잠시 후 게임 시작 버튼이 나타납니다', this.canvasWidth / 2, this.canvasHeight / 2 + 80);
+        }
 
         ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic';
     }
 
     // 보스 인트로 화면
