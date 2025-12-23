@@ -124,12 +124,7 @@ class Game {
 
         if (!this.isRunning && e.key !== 'Enter') return;
 
-        // 명령어 입력 토글 (Tab)
-        if (e.key === 'Tab') {
-            e.preventDefault();
-            this.toggleCommandInput();
-            return;
-        }
+
 
         // 명령어 입력 중이면 게임 조작 차단
         if (this.isCommandInputVisible) return;
@@ -186,10 +181,9 @@ class Game {
         console.log('Game.start() called');
         if (this.isRunning) return;
 
-        // 모드 선택 화면 표시
-        this.showModeSelection = true;
-        this.clear();
-        this.drawModeSelection();
+        // 바로 게임 시작 (기본 모드: angko)
+        this.gameMode = 'angko';
+        this.startGame();
     }
 
     // 모드 선택 후 실제 게임 시작
@@ -497,6 +491,13 @@ class Game {
                 this.player.godMode = !this.player.godMode;
                 console.log(`무적 모드: ${this.player.godMode ? 'ON' : 'OFF'}`);
             }
+        } else if (cmd === '플뢰르 드 리스의 검') {
+            console.log('플뢰르 드 리스의 검 획득');
+            this.spawnItem(this.player.x, this.player.y - 50, 'mystery_item', 'assets/images/items/3.png');
+        } else if (cmd === '숙명에 맞서는 관') {
+            console.log('숙명에 맞서는 관 획득');
+            this.spawnItem(this.player.x, this.player.y - 50, 'fate_coffin', 'assets/images/items/26.webp');
+
         }
     }
 
@@ -738,15 +739,12 @@ class Game {
             // 모든 문 열기 (장애물 없음)
             this.room.openAllDoors();
         } else if (roomType === 'shop') {
-            // 상점
-            const centerX = this.canvas.width / 2;
-            const centerY = this.canvas.height / 2; // 화면 중앙으로 이동
-            // 상점 아이템 생성
+            // 상점: 아이템 3개 생성 (항상 새로 생성)
             this.spawnShopItems();
 
-            // 리롤 스테이션 생성 (상점 주인 오른쪽)
+            // 리롤 기계 생성
             this.rerollStation = {
-                x: this.canvas.width / 2 + 100,
+                x: this.canvas.width / 2,
                 y: this.canvas.height / 2 - 150,
                 width: 64,
                 height: 64,
@@ -815,10 +813,6 @@ class Game {
             // 시작 방은 문을 열어둠
             this.room.openAllDoors();
 
-            // 앙코 모드: 1스테이지 시작 방에 무라사마 제공
-            if (this.gameMode === 'angko' && this.level === 1) {
-                this.spawnItem(this.canvas.width / 2, this.canvas.height / 2 + 100, 'murasama', 'assets/images/items/20.gif');
-            }
         }
 
         // 보상 상태 초기화 (새 방 진입 시, 로드된 상태가 덮어씌우지 않았다면)
@@ -938,10 +932,10 @@ class Game {
             { type: 'mystery_item', image: 'assets/images/items/3.png' },
             { type: 'soda_komibol', image: 'assets/images/items/2.jpg' },
             { type: 'montelli_gun', image: 'assets/images/items/5.webp' },
-            { type: 'fire_sword', image: 'assets/images/items/6.jpg' },
+
             { type: 'tga_award', image: 'assets/images/items/22.png' },
             { type: 'murasama', image: 'assets/images/items/20.gif' },
-            { type: 'fate_coffin', image: 'assets/images/items/25.webp' }
+            { type: 'fate_coffin', image: 'assets/images/items/26.webp' }
         ];
 
         // 미보유 장비
@@ -958,7 +952,7 @@ class Game {
                 const equipItem = new Item(slot.x, slot.y, randomEquip.type, randomEquip.image);
                 equipItem.price = Math.floor(Math.random() * 11) + 20; // 20 ~ 30
                 if (this.player && this.player.hasDiscount) equipItem.price = Math.max(1, equipItem.price - 5);
-                // hideNameInShop 제거 - 이제 아이템 이름이 표시됨
+                equipItem.hideNameInShop = true; // 이름 숨김
                 this.items.push(equipItem);
 
                 // 중복 방지: 리스트에서 제거
@@ -968,6 +962,7 @@ class Game {
                 const extraPotion = new Item(slot.x, slot.y, 'potion', 'assets/images/items/16.png');
                 extraPotion.price = 15;
                 if (this.player && this.player.hasDiscount) extraPotion.price = Math.max(1, extraPotion.price - 5);
+                // 포션은 이름 표시 (hideNameInShop 설정 안 함)
                 this.items.push(extraPotion);
             }
         }
@@ -1060,7 +1055,7 @@ class Game {
     onGameComplete() {
         this.isRunning = false;
         this.clear();
-        this.drawGameComplete();
+        this.ui.drawGameOver(this.ctx, this.score, true);
 
         // 3초 후 타이틀로
         setTimeout(() => {
@@ -1261,7 +1256,10 @@ class Game {
 
             // 사용 아이템 (베기 -> 찌르기)
             if (this.player.keys.space && this.player.canUseItem()) {
-                if (this.player.getActiveItem() === 'slash') {
+                const activeItem = this.player.getActiveItem();
+                console.log('Space 키 눌림, 활성 아이템:', activeItem, '쿨다운:', this.player.itemCooldown);
+
+                if (activeItem === 'slash') {
                     // 마우스 방향으로 찌르기
                     // 플레이어의 화면상 위치
                     const playerScreenX = this.player.x - this.camera.x;
@@ -1278,8 +1276,8 @@ class Game {
                         'assets/images/items/3.png' // 이미지 경로 추가
                     );
                     this.activeItems.push(slash);
-                    this.player.useItem();
-                    console.log('플뢰르 드 리스의 검 사용!');
+                    this.player.useItem(1.0); // 쿨타임 1초
+                    console.log('플뢰르 드 리스의 검 사용! activeItems 개수:', this.activeItems.length, 'slash 객체:', slash);
                 } else if (this.player.getActiveItem() === 'murasama') {
                     // 무라사마 공격 (21번 이미지 - GIF)
                     const playerScreenX = this.player.x - this.camera.x;
@@ -1311,17 +1309,15 @@ class Game {
                     console.log('무라사마 공격 사용!');
                 } else if (this.player.getActiveItem() === 'fate_coffin') {
                     // 숙명에 맞서는 관 (월광참)
-                    // 플레이어가 바라보는 방향으로 발사
-                    let dirX = 0;
-                    let dirY = 0;
+                    // 마우스 방향으로 발사
+                    const playerScreenX = this.player.x - this.camera.x;
+                    const playerScreenY = this.player.y - this.camera.y;
 
-                    switch (this.player.lastDirection) {
-                        case 'up': case 'w': dirY = -1; break;
-                        case 'down': case 's': dirY = 1; break;
-                        case 'left': case 'a': dirX = -1; break;
-                        case 'right': case 'd': dirX = 1; break;
-                        default: dirY = 1; break; // 기본 아래
-                    }
+                    // 마우스와 플레이어 사이의 각도 계산
+                    const angle = Math.atan2(this.mouseY - playerScreenY, this.mouseX - playerScreenX);
+
+                    const dirX = Math.cos(angle);
+                    const dirY = Math.sin(angle);
 
                     const projectile = new Projectile(
                         this.player.x,
@@ -1334,7 +1330,7 @@ class Game {
                     );
 
                     this.projectiles.push(projectile);
-                    this.player.useItem(3.0); // 쿨타임 3초
+                    this.player.useItem(1.2); // 쿨타임 1.2초 (기존 3.0초에서 2.5배 속도 증가)
                     console.log('월광참 발사!');
                 }
             }
@@ -1472,6 +1468,28 @@ class Game {
                         this.enemies[i].takeDamage(item.damage, this);
                         item.hitEnemies.push(this.enemies[i]);
 
+                        // 넉백 적용 (플뢰르 드 리스의 검 등)
+                        if (item instanceof Slash || item.constructor.name === 'Slash' || item.type === 'slash') {
+                            // 밀어낼 방향 (플레이어 -> 적)
+                            const dx = this.enemies[i].x - this.player.x;
+                            const dy = this.enemies[i].y - this.player.y;
+                            const dist = Math.sqrt(dx * dx + dy * dy);
+
+                            if (dist > 0) {
+                                const dirX = dx / dist;
+                                const dirY = dy / dist;
+
+                                // 넉백 힘 (보스는 아주 조금만)
+                                let knockbackForce = 5; // 기본 넉백 대폭 감소 (100 -> 5)
+                                if (this.enemies[i].type === 'boss' || this.enemies[i].type === 'hive_boss' || this.enemies[i].type === 'stage3_boss') {
+                                    knockbackForce = 1; // 보스는 거의 밀리지 않음
+                                }
+
+                                this.enemies[i].x += dirX * knockbackForce;
+                                this.enemies[i].y += dirY * knockbackForce;
+                            }
+                        }
+
                         // 파티클 효과
                         this.spawnParticles(this.enemies[i].x, this.enemies[i].y, '#ffff00', 10);
                         console.log(`${item.constructor.name} 적 타격!`);
@@ -1493,8 +1511,8 @@ class Game {
                         this.spawnStar(enemy.x + offsetX, enemy.y + offsetY);
                     }
                 } else {
-                    // 일반 적은 적게 드롭 (30% 확률로 1개)
-                    if (Math.random() < 0.3) {
+                    // 일반 적은 적게 드롭 (40% 확률로 1개)
+                    if (Math.random() < 0.4) {
                         this.spawnStar(enemy.x, enemy.y);
                     }
                 }
@@ -1724,6 +1742,14 @@ class Game {
                             enemy.active = false;
                         }
 
+                        // 월광참(moon_slash) 넉백 효과 (발사된 칼)
+                        if (projectile.type === 'moon_slash') {
+                            // 발사체 진행 방향으로 넉백
+                            const knockbackForce = (enemy.type === 'boss' || enemy.type === 'hive_boss' || enemy.type === 'stage3_boss') ? 5 : 20;
+                            enemy.x += projectile.dirX * knockbackForce;
+                            enemy.y += projectile.dirY * knockbackForce;
+                        }
+
                         // 오팔 총 효과 (타격 이펙트)
                         if (projectile.isOpal) {
                             this.spawnParticles(projectile.x, projectile.y, '#ccffff', 10);
@@ -1773,6 +1799,22 @@ class Game {
                             this.updateScore();
                         }
                         item.hitEnemies.push(enemy);
+
+                        // 넉백 효과 (충돌 시에만, 아주 조금)
+                        if (item instanceof Slash) {
+                            const dx = enemy.x - this.player.x;
+                            const dy = enemy.y - this.player.y;
+                            const distance = Math.sqrt(dx * dx + dy * dy);
+                            if (distance > 0) {
+                                let knockbackForce = 2; // "씹 넉백 줄이라고" -> 매우 조금 (2)
+                                // 보스는 거의 없음
+                                if (enemy.type === 'boss' || enemy.type === 'hive_boss' || enemy.type === 'stage3_boss') {
+                                    knockbackForce = 0.5;
+                                }
+                                enemy.x += (dx / distance) * knockbackForce;
+                                enemy.y += (dy / distance) * knockbackForce;
+                            }
+                        }
                     }
 
                     // 소다맛 꼬미볼 효과 (적 속도 증가)
@@ -1780,17 +1822,6 @@ class Game {
                         enemy.speedBoostTimer = 0.8; // 0.8초 동안 속도 증가
                     }
 
-                    // 넉백 효과 (보스 제외, Slash만 적용, GifSlash는 넉백 없음)
-                    if (item instanceof Slash && enemy.type !== 'boss') {
-                        const dx = enemy.x - this.player.x;
-                        const dy = enemy.y - this.player.y;
-                        const distance = Math.sqrt(dx * dx + dy * dy);
-                        if (distance > 0) {
-                            const knockbackForce = 30; // 넉백 감소 (100 -> 30)
-                            enemy.x += (dx / distance) * knockbackForce;
-                            enemy.y += (dy / distance) * knockbackForce;
-                        }
-                    }
                 }
             }
         }
@@ -1961,6 +1992,12 @@ class Game {
     }
 
     draw(deltaTime = 0) {
+        if (this.isGameOver) {
+            this.clear();
+            this.ui.drawGameOver(this.ctx, this.score, true);
+            return;
+        }
+
         // 화면 클리어
         this.clear();
 
@@ -2098,6 +2135,13 @@ class Game {
         // 발사체 그리기
         for (const projectile of this.projectiles) {
             projectile.draw(this.ctx);
+        }
+
+        // 사용 아이템 효과 그리기 (slash, murasama 등)
+        for (const activeItem of this.activeItems) {
+            if (activeItem.draw) {
+                activeItem.draw(this.ctx);
+            }
         }
 
         // 사용 아이템 효과 업데이트
@@ -2484,6 +2528,8 @@ class Game {
         this.startGame();
     }
 
+
+
     // 게임 오버
     gameOver() {
         this.isRunning = false;
@@ -2496,15 +2542,18 @@ class Game {
 
     // 재시작 버튼 클릭 핸들러
     handleRestartClick(clickX, clickY) {
-        // 다시하기 버튼 위치
+        // 다시하기 버튼 위치 (drawGameOver와 일치해야 함)
         const buttonWidth = 200;
         const buttonHeight = 60;
         const buttonX = this.canvas.width / 2 - buttonWidth / 2;
         const buttonY = this.canvas.height / 2 + 60;
 
-        // 버튼 클릭 체크
-        if (clickX >= buttonX && clickX <= buttonX + buttonWidth &&
+        // 버튼 클릭 체크 (게임 오버 상태일 때만)
+        if (this.isGameOver &&
+            clickX >= buttonX && clickX <= buttonX + buttonWidth &&
             clickY >= buttonY && clickY <= buttonY + buttonHeight) {
+
+            console.log("재시작 버튼 클릭됨!");
             this.restartGame();
         }
     }

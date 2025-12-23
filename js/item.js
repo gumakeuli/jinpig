@@ -129,19 +129,7 @@ class Item {
                     console.log('무라사마 획득!');
                 };
                 break;
-            case 'fire_sword':
-                this.name = '화염 검';
-                this.description = '공격력 +2, 적에게 화상 효과';
-                this.color = '#FF4500';
-                this.price = 15;
-                this.effect = (player) => {
-                    if (player.damage < player.damageCap) {
-                        player.damage += 2;
-                    }
-                    player.hasFireSword = true;
-                    console.log('화염 검 획득!');
-                };
-                break;
+
             case 'tga_award':
                 this.name = '2025 TGA PLAYER\'S VOICE AWARD';
                 this.description = '모든 능력치 +3';
@@ -188,7 +176,8 @@ class Item {
                 this.color = '#B0C4DE'; // LightSteelBlue
                 this.effect = (player) => {
                     player.addItemToSlot('fate_coffin', this.itemImage);
-                    console.log('숙명에 맞서는 관 획득!');
+                    player.hasDiscount = true; // 상점 할인 효과 추가
+                    console.log('숙명에 맞서는 관 획득! (할인 적용)');
                 };
                 break;
             default:
@@ -307,7 +296,9 @@ class Item {
             ctx.textAlign = 'center';
             ctx.textBaseline = 'bottom';
 
-            const text = (this.hideNameInShop && this.price > 0) ? `??? - ${this.price}` : `${this.name} - ${this.price}`;
+            // hideNameInShop이 true면 ???로 표시, 아니면 이름 표시
+            const displayName = this.hideNameInShop ? '???' : this.name;
+            const text = `${displayName} - ${this.price}`;
             const textX = this.x;
             const textY = this.y - this.height / 2 + floatY - 30; // 아이템 위쪽
 

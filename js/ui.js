@@ -186,10 +186,12 @@ class UI {
     drawItemSlots(ctx, player) {
         const slotSize = 50;
         const slotSpacing = 10;
-        const startX = this.canvasWidth / 2 - (slotSize + slotSpacing / 2);
+        const totalSlots = 4;
+        const totalWidth = totalSlots * slotSize + (totalSlots - 1) * slotSpacing;
+        const startX = this.canvasWidth / 2 - totalWidth / 2;
         const startY = this.canvasHeight - 80;
 
-        for (let i = 0; i < 2; i++) {
+        for (let i = 0; i < totalSlots; i++) {
             const x = startX + i * (slotSize + slotSpacing);
             const y = startY;
 
@@ -237,11 +239,11 @@ class UI {
             }
         }
 
-        // Tab 키 힌트
+        // F 키 힌트 (Tab 대신 F로 수정)
         ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
         ctx.font = '12px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText('Tab: 슬롯 전환 | Space: 사용', this.canvasWidth / 2, startY - 8);
+        ctx.fillText('F: 슬롯 전환 | Space: 사용', this.canvasWidth / 2, startY - 8);
         ctx.textAlign = 'left';
     }
 

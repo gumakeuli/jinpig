@@ -212,7 +212,7 @@ class Enemy {
             case 'stage3_boss':
                 this.speed = 80; // 중간 속도
                 this.maxHealth = 120; // 체력 하향 (300 -> 200 -> 120)
-                this.damage = 3; // 강한 데미지
+                this.damage = 2; // 강한 데미지 (3 -> 2 하향)
                 this.color = '#FF0000'; // 빨간색
                 this.bossName = '최종 보스'; // 보스 이름
                 this.width = 150;

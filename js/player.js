@@ -90,8 +90,8 @@ class Player {
         this.godMode = false;
 
         // 사용 아이템 슬롯 시스템
-        this.itemSlots = [null, null]; // 2개 슬롯
-        this.currentSlot = 0; // 현재 선택된 슬롯 (0 or 1)
+        this.itemSlots = [null, null, null, null]; // 4개 슬롯
+        this.currentSlot = 0; // 현재 선택된 슬롯 (0, 1, 2, 3)
         this.itemCooldown = 0;
         this.itemMaxCooldown = 2; // 2초 쿨다운 (후딜레이 증가)
 
@@ -109,7 +109,7 @@ class Player {
         this.moonShieldCooldown = 10; // 10초 쿨다운
 
         // 무기 아이템 효과
-        this.hasFireSword = false; // 화염 검
+
         this.hasIceSpear = false; // 얼음 창
         this.hasLightningArrow = false; // 번개 화살
         this.hasPoisonDagger = false; // 독 단검
@@ -176,9 +176,32 @@ class Player {
             case 'f':
             case 'F':
                 this.keys.f = true;
-                // 슬롯 전환
-                this.currentSlot = (this.currentSlot + 1) % 2;
-                console.log(`슬롯 전환: ${this.currentSlot}`);
+
+
+                // 슬롯 전환 (비어있지 않은 슬롯만 순환)
+                const activeIndices = [];
+                for (let i = 0; i < this.itemSlots.length; i++) {
+                    if (this.itemSlots[i] !== null) {
+                        activeIndices.push(i);
+                    }
+                }
+
+                if (activeIndices.length > 0) {
+                    // 현재 슬롯이 activeIndices에 있는지 확인
+                    let currentIndexInActive = activeIndices.indexOf(this.currentSlot);
+
+                    if (currentIndexInActive === -1) {
+                        // 현재 슬롯이 비어있거나 목록에 없으면 첫 번째 유효 슬롯으로
+                        this.currentSlot = activeIndices[0];
+                    } else {
+                        // 다음 유효 슬롯으로 이동
+                        let nextIndex = (currentIndexInActive + 1) % activeIndices.length;
+                        this.currentSlot = activeIndices[nextIndex];
+                    }
+                    console.log(`슬롯 전환: ${this.currentSlot}`);
+                } else {
+                    console.log('사용 가능한 아이템이 없습니다.');
+                }
                 break;
             // 대쉬 - Shift
             case 'Shift':
