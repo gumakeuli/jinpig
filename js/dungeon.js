@@ -37,6 +37,7 @@ class DungeonGenerator {
             bossRoom: this.bossRoom,
             shopRoom: this.shopRoom,
             treasureRoom: this.treasureRoom,
+            altarRoom: this.altarRoom, // 제단 방 ID 추가
             gridWidth: this.gridWidth,
             gridHeight: this.gridHeight
         };

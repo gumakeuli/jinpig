@@ -159,8 +159,18 @@ class Game {
             }
         }
 
+        // 상호작용 (Space 키: 제단)
+        if (e.key === ' ' || e.code === 'Space') {
+            if (this.altar && !this.altar.used && this.altar.checkCollision(this.player)) {
+                if (this.altar.interact(this.player)) {
+                    // 효과음 등 추가 가능
+                    this.spawnParticles(this.altar.x, this.altar.y, '#ffffff', 30);
+                }
+            }
+        }
+
         // 방향키와 WASD 기본 동작 방지
-        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'W', 'a', 'A', 's', 'S', 'd', 'D'].includes(e.key)) {
+        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'W', 'a', 'A', 's', 'S', 'd', 'D', ' '].includes(e.key)) {
             e.preventDefault();
         }
 
@@ -181,9 +191,10 @@ class Game {
         console.log('Game.start() called');
         if (this.isRunning) return;
 
-        // 바로 게임 시작 (기본 모드: angko)
+        // 조작법 화면 표시
         this.gameMode = 'angko';
-        this.startGame();
+        this.showControlsScreen = true;
+        this.drawControlsScreen();
     }
 
     // 모드 선택 후 실제 게임 시작
@@ -641,6 +652,11 @@ class Game {
             this.camera.x = 0;
             this.camera.y = 0;
         }
+
+        // DEBUG: 시작 방에 제단 소환 (테스트용) - 제거됨
+        // if (roomType === 'start') {
+        //     this.altar = new Altar(this.canvas.width / 2, this.canvas.height / 2 - 150);
+        // }
 
         // 이웃 정보로 문 설정
         if (neighbors.length > 0) {
@@ -1381,6 +1397,11 @@ class Game {
         // 장애물 업데이트
         if (this.room) {
             this.room.updateObstacles(deltaTime);
+        }
+
+        // 제단 업데이트
+        if (this.altar && this.altar.active) {
+            this.altar.update(deltaTime, this.player);
         }
 
         // 보스 BGM 제어 (모든 스테이지)
@@ -2427,7 +2448,7 @@ class Game {
         this.ctx.fillText('방향키 : 공격', startX, startY + lineHeight);
         this.ctx.fillText('Space : 상호작용', startX, startY + lineHeight * 2);
         this.ctx.fillText('F : 아이템 슬롯 전환', startX, startY + lineHeight * 3);
-        this.ctx.fillText('Shift : 대쉬 (2스테이지+)', startX, startY + lineHeight * 4);
+        this.ctx.fillText('Shift : 대쉬', startX, startY + lineHeight * 4);
 
         // 시작 안내
         this.ctx.font = '20px Arial';
