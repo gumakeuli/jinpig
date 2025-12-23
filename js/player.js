@@ -108,6 +108,21 @@ class Player {
         this.moonShieldTimer = 0;
         this.moonShieldCooldown = 10; // 10초 쿨다운
 
+        // 무기 아이템 효과
+        this.hasFireSword = false; // 화염 검
+        this.hasIceSpear = false; // 얼음 창
+        this.hasLightningArrow = false; // 번개 화살
+        this.hasPoisonDagger = false; // 독 단검
+
+        // 방어구 아이템 효과
+        this.hasThornArmor = false; // 가시 갑옷
+
+        // 패시브 아이템 효과
+        this.hasRegenRing = false; // 재생 반지
+        this.hasVampireNecklace = false; // 흡혈 목걸이
+        this.hasDoubleShot = false; // 이중 사격
+        this.hasExplosiveBullets = false; // 폭발 탄환
+
         // 대쉬 능력
         this.hasDash = true; // 1스테이지부터 사용 가능
         this.isDashing = false;

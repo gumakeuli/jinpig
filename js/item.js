@@ -139,111 +139,7 @@ class Item {
                         player.damage += 2;
                     }
                     player.hasFireSword = true;
-                };
-                break;
-            case 'ice_spear':
-                this.name = '얼음 창';
-                this.description = '적을 느리게 만듦';
-                this.color = '#00BFFF';
-                this.price = 12;
-                this.effect = (player) => {
-                    player.hasIceSpear = true;
-                };
-                break;
-            case 'lightning_arrow':
-                this.name = '번개 화살';
-                this.description = '관통 공격 가능';
-                this.color = '#FFD700';
-                this.price = 18;
-                this.effect = (player) => {
-                    player.hasLightningArrow = true;
-                };
-                break;
-            case 'poison_dagger':
-                this.name = '독 단검';
-                this.description = '지속 독 데미지';
-                this.color = '#9400D3';
-                this.price = 14;
-                this.effect = (player) => {
-                    player.hasPoisonDagger = true;
-                };
-                break;
-            case 'iron_shield':
-                this.name = '철갑 방패';
-                this.description = '최대 체력 +2';
-                this.color = '#C0C0C0';
-                this.price = 20;
-                this.effect = (player) => {
-                    if (player.maxHealth < player.maxHealthCap) {
-                        player.maxHealth += 2;
-                        player.health += 2;
-                    }
-                };
-                break;
-            case 'dodge_cloak':
-                this.name = '회피 망토';
-                this.description = '이동속도 +30%';
-                this.color = '#4B0082';
-                this.price = 16;
-                this.effect = (player) => {
-                    player.speed *= 1.3;
-                };
-                break;
-            case 'thorn_armor':
-                this.name = '가시 갑옷';
-                this.description = '피격 시 반사 데미지';
-                this.color = '#8B4513';
-                this.price = 18;
-                this.effect = (player) => {
-                    player.hasThornArmor = true;
-                };
-                break;
-            case 'regen_ring':
-                this.name = '재생 반지';
-                this.description = '5초마다 체력 1 회복';
-                this.color = '#32CD32';
-                this.price = 22;
-                this.effect = (player) => {
-                    player.hasRegenRing = true;
-                };
-                break;
-            case 'vampire_necklace':
-                this.name = '흡혈 목걸이';
-                this.description = '공격 시 체력 회복';
-                this.color = '#DC143C';
-                this.price = 25;
-                this.effect = (player) => {
-                    player.hasVampireNecklace = true;
-                };
-                break;
-            case 'double_shot':
-                this.name = '이중 사격';
-                this.description = '발사체 2개 발사';
-                this.color = '#FF6347';
-                this.price = 20;
-                this.effect = (player) => {
-                    player.hasDoubleShot = true;
-                };
-                break;
-            case 'explosive_bullets':
-                this.name = '폭발 탄환';
-                this.description = '착탄 시 범위 데미지';
-                this.color = '#FF8C00';
-                this.price = 24;
-                this.effect = (player) => {
-                    player.hasExplosiveBullets = true;
-                };
-                break;
-            case 'time_warp':
-                this.name = '시간 왜곡';
-                this.description = '공격속도 +2';
-                this.color = '#9370DB';
-                this.price = 18;
-                this.effect = (player) => {
-                    if (player.attackSpeed < player.attackSpeedCap) {
-                        player.attackSpeed += 2;
-                        player.updateFireRate();
-                    }
+                    console.log('화염 검 획득!');
                 };
                 break;
             case 'tga_award':
@@ -274,6 +170,7 @@ class Item {
                         const increase = Math.min(3, player.luckCap - player.luck);
                         player.luck += increase;
                     }
+                    console.log('TGA AWARD 획득!');
                 };
                 break;
             case 'golden_wave_pattern':
@@ -283,18 +180,6 @@ class Item {
                 this.effect = (player) => {
                     player.hasDiscount = true;
                     console.log('금빛 파도의 무늬 획득! 상점 할인 적용');
-                };
-                break;
-            case 'moonlight':
-                this.name = '달빛';
-                this.description = '10초마다 데미지를 1회 막아주는 보호막 생성';
-                this.color = '#F0F8FF'; // AliceBlue
-                this.price = 25;
-                this.effect = (player) => {
-                    player.hasMoonlight = true;
-                    player.moonShield = true; // 획득 즉시 보호막 생성
-                    player.moonShieldTimer = 0;
-                    console.log('달빛 획득!');
                 };
                 break;
             case 'fate_coffin':

@@ -572,6 +572,9 @@ class Game {
             });
         }
 
+        // 방 전환 시 포탈 제거 (보스 클리어 후 다른 방으로 이동 시)
+        this.portal = null;
+
         const roomData = this.dungeon.rooms.get(roomId);
         if (!roomData) return;
 
@@ -758,18 +761,52 @@ class Game {
             this.room.openAllDoors();
         } else if (hasEnemies) {
             // 일반 전투 방
+            // 적 개수 랜덤 (레벨에 따라 증가)
+            let minEnemies, maxEnemies;
             if (this.level === 1) {
-                this.spawnEnemy(200, 150, 'basic');
-                this.spawnEnemy(600, 150, 'basic');
-                this.spawnEnemy(400, 120, 'fast');
-                this.spawnEnemy(150, 400, 'tank');
-            } else if (this.level >= 2) {
-                // 2스테이지: 더 어렵게
-                this.spawnEnemy(200, 150, 'fast');
-                this.spawnEnemy(600, 150, 'fast');
-                this.spawnEnemy(400, 120, 'tank');
-                this.spawnEnemy(150, 400, 'tank');
-                this.spawnEnemy(300, 300, 'basic');
+                minEnemies = 2;
+                maxEnemies = 4;
+            } else if (this.level === 2) {
+                minEnemies = 3;
+                maxEnemies = 5;
+            } else {
+                minEnemies = 4;
+                maxEnemies = 6;
+            }
+            const enemyCount = Math.floor(Math.random() * (maxEnemies - minEnemies + 1)) + minEnemies;
+
+            // 적 타입 풀 (레벨에 따라 다름)
+            let enemyTypes;
+            if (this.level === 1) {
+                enemyTypes = ['basic', 'basic', 'fast', 'tank']; // 1스테: basic 많음
+            } else {
+                enemyTypes = ['basic', 'fast', 'fast', 'tank', 'tank']; // 2스테 이상: fast/tank 많음
+            }
+
+            // 랜덤 위치에 적 생성
+            for (let i = 0; i < enemyCount; i++) {
+                // 랜덤 타입 선택
+                const randomType = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
+
+                // 랜덤 위치 (벽과 중앙에서 충분히 떨어진 곳)
+                const margin = 100;
+                const centerMargin = 150; // 중앙 근처 피하기
+                const centerX = roomWidth / 2;
+                const centerY = roomHeight / 2;
+
+                let x, y;
+                let attempts = 0;
+                do {
+                    x = margin + Math.random() * (roomWidth - margin * 2);
+                    y = margin + Math.random() * (roomHeight - margin * 2);
+                    attempts++;
+                } while (
+                    attempts < 20 &&
+                    Math.abs(x - centerX) < centerMargin &&
+                    Math.abs(y - centerY) < centerMargin
+                );
+
+                this.spawnEnemy(x, y, randomType);
             }
 
             // 적이 있는 방은 문을 닫음
@@ -902,14 +939,8 @@ class Game {
             { type: 'soda_komibol', image: 'assets/images/items/2.jpg' },
             { type: 'montelli_gun', image: 'assets/images/items/5.webp' },
             { type: 'fire_sword', image: 'assets/images/items/6.jpg' },
-            { type: 'ice_spear', image: 'assets/images/items/6.jpg' },
-            { type: 'iron_shield', image: 'assets/images/items/4.png' },
-            { type: 'poison_dagger', image: 'assets/images/items/6.jpg' },
-            { type: 'double_shot', image: 'assets/images/items/5.webp' },
-            { type: 'explosive_bullets', image: 'assets/images/items/5.webp' },
             { type: 'tga_award', image: 'assets/images/items/22.png' },
             { type: 'murasama', image: 'assets/images/items/20.gif' },
-            { type: 'moonlight', image: 'assets/images/items/23.webp' },
             { type: 'fate_coffin', image: 'assets/images/items/25.webp' }
         ];
 
@@ -927,7 +958,7 @@ class Game {
                 const equipItem = new Item(slot.x, slot.y, randomEquip.type, randomEquip.image);
                 equipItem.price = Math.floor(Math.random() * 11) + 20; // 20 ~ 30
                 if (this.player && this.player.hasDiscount) equipItem.price = Math.max(1, equipItem.price - 5);
-                equipItem.hideNameInShop = true;
+                // hideNameInShop 제거 - 이제 아이템 이름이 표시됨
                 this.items.push(equipItem);
 
                 // 중복 방지: 리스트에서 제거
@@ -1243,11 +1274,12 @@ class Game {
                         this.player.x,
                         this.player.y,
                         angle, // 방향 문자열 대신 각도 전달
-                        1 + this.player.damage * 1.5
+                        1 + this.player.damage * 1.5,
+                        'assets/images/items/3.png' // 이미지 경로 추가
                     );
                     this.activeItems.push(slash);
                     this.player.useItem();
-                    console.log('찌르기 공격 사용!');
+                    console.log('플뢰르 드 리스의 검 사용!');
                 } else if (this.player.getActiveItem() === 'murasama') {
                     // 무라사마 공격 (21번 이미지 - GIF)
                     const playerScreenX = this.player.x - this.camera.x;
@@ -1425,17 +1457,47 @@ class Game {
                 }
             }
 
+            // activeItems (slash, GifSlash 등)와의 충돌 체크
+            for (let j = 0; j < this.activeItems.length; j++) {
+                const item = this.activeItems[j];
+
+                // Slash 또는 GifSlash의 checkCollision 메서드 사용
+                if (item.checkCollision && item.checkCollision(this.enemies[i])) {
+                    // 이미 타격한 적인지 확인
+                    if (!item.hitEnemies) {
+                        item.hitEnemies = [];
+                    }
+
+                    if (!item.hitEnemies.includes(this.enemies[i])) {
+                        this.enemies[i].takeDamage(item.damage, this);
+                        item.hitEnemies.push(this.enemies[i]);
+
+                        // 파티클 효과
+                        this.spawnParticles(this.enemies[i].x, this.enemies[i].y, '#ffff00', 10);
+                        console.log(`${item.constructor.name} 적 타격!`);
+                    }
+                }
+            }
+
             // 죽은 적 제거 (별의 소리 드롭)
             if (!this.enemies[i].active) {
                 const enemy = this.enemies[i];
 
-                // 별의 소리 드롭 (제거됨: 방 클리어 보상으로 변경)
-                /*
-                const starCount = enemy.getStarDropCount();
-                for (let j = 0; j < starCount; j++) {
-                    this.spawnStar(enemy.x, enemy.y);
+                // 별의 소리 드롭
+                if (enemy.type === 'boss' || enemy.type === 'hive_boss' || enemy.type === 'stage3_boss') {
+                    // 보스는 많이 드롭 (5~10개)
+                    const starCount = Math.floor(Math.random() * 6) + 5;
+                    for (let j = 0; j < starCount; j++) {
+                        const offsetX = (Math.random() - 0.5) * 100;
+                        const offsetY = (Math.random() - 0.5) * 100;
+                        this.spawnStar(enemy.x + offsetX, enemy.y + offsetY);
+                    }
+                } else {
+                    // 일반 적은 적게 드롭 (30% 확률로 1개)
+                    if (Math.random() < 0.3) {
+                        this.spawnStar(enemy.x, enemy.y);
+                    }
                 }
-                */
 
                 // 보스 처치 시 BGM 정지
                 if (enemy.type === 'boss' && this.isBossBGMPlaying) {
